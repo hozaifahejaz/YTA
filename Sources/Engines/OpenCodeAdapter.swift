@@ -5,7 +5,8 @@ import Support
 ///
 /// Checked against OpenCode 2.2.5: there is no schema flag, so YTA checks the result
 /// itself. The read-only `plan` agent is used and `--auto` is never passed, so nothing
-/// is approved without the owner. [VERIFY] the JSON event shapes against a real run.
+/// is approved without the owner. Event shapes checked against a real run on OpenCode 2.2.5:
+/// step_start, text (the whole answer, often in a json fence), step_finish with tokens and cost.
 public struct OpenCodeAdapter: EngineAdapter {
     public init() {}
 
@@ -43,6 +44,8 @@ final class OpenCodeParser: EventParser {
         let type = event["type"]?.stringValue ?? ""
         let part = event["part"] ?? event
         switch type {
+        case "step_start":
+            return [.progress("Thinking")]
         case "text":
             if let chunk = part["text"]?.stringValue { text += chunk }
             return []

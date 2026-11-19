@@ -11,7 +11,7 @@ struct HealthCheckView: View {
         VStack(alignment: .leading, spacing: 0) {
             VStack(alignment: .leading, spacing: Spacing.xxs) {
                 Text("Health check").font(Typography.title)
-                Text("YTA drives tools you already have. Here is what it found on this Mac.")
+                Text("YTA drives these tools. It can install what is missing and keeps them up to date.")
                     .font(Typography.callout)
                     .foregroundStyle(Palette.textSecondary)
             }
@@ -39,6 +39,8 @@ struct HealthCheckView: View {
                 Spacer()
                 Button("Check Again") { Task { await model.runHealthCheck() } }
                     .disabled(model.isCheckingHealth)
+                Button(model.isCheckingUpdates ? "Checking for Updates…" : "Check for Updates") { Task { await model.checkToolUpdates() } }
+                    .disabled(model.isCheckingUpdates)
                 Button("Continue") {
                     model.finishFirstRun()
                     dismiss()
@@ -55,6 +57,7 @@ struct HealthCheckView: View {
 }
 
 struct HealthRow: View {
+    @Environment(AppModel.self) private var model
     let id: HealthItemID
     let item: HealthItem?
     let checking: Bool
@@ -78,17 +81,36 @@ struct HealthRow: View {
                 }
                 Text(id.purpose).font(Typography.callout).foregroundStyle(Palette.textSecondary)
                 if item?.status == .missing, let fix = id.fix {
-                    if fix.hasPrefix("npm ") {
-                        CopyableCommand(fix)
-                    } else {
-                        Text(fix).font(Typography.callout).foregroundStyle(Palette.textSecondary)
-                    }
+                    Text(fix).font(Typography.callout).foregroundStyle(Palette.textSecondary)
                 }
+                if let tool = model.status(of: id), tool.updateAvailable, let latest = tool.latest {
+                    Text("Version \(latest) is available.").font(Typography.caption).foregroundStyle(Palette.caution)
+                }
+            }
+            if model.busyTools.contains(id) {
+                ProgressView().controlSize(.small)
+            } else if needsInstall {
+                Button("Install") { Task { await model.installTool(id) } }
+                    .controlSize(.small)
+            } else if let tool = model.status(of: id), tool.updateAvailable, tool.updateCommand != nil || id == .remotion {
+                Button("Update") { Task { await model.updateTool(id) } }
+                    .controlSize(.small)
+            } else if id == .whisper, item?.path != nil, item?.status == .warning {
+                Button("Get Model") { Task { await model.ensureWhisperModel() } }
+                    .controlSize(.small)
             }
         }
         .padding(Spacing.s)
         .background(Palette.background, in: RoundedRectangle(cornerRadius: Radius.m, style: .continuous))
         .accessibilityElement(children: .combine)
+    }
+
+    private var needsInstall: Bool {
+        guard id != .disk else { return false }
+        if item?.status == .missing { return true }
+        // Optional tools that are absent show as warnings without a path.
+        return (id == .ffmpeg || id == .whisper) && item?.path == nil && item?.status == .warning
+            || (id == .remotion && item?.status == .warning)
     }
 
     @ViewBuilder

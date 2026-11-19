@@ -42,7 +42,7 @@ extension AppModel {
             artwork: CoreGraphicsRenderer(),
             video: node.flatMap { VideoStore(folder: record.folder).video(containing: $0.id) },
             ai33Key: { [secrets] in try? secrets.valueForRequest(.ai33pro) },
-            narrationTools: MacNarrationTools(),
+            narrationTools: MacNarrationTools(whisper: whisper),
             mediaKey: { [secrets] source in
                 switch source {
                 case "pexels": try? secrets.valueForRequest(.pexels)

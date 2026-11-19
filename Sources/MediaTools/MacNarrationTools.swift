@@ -16,11 +16,23 @@ public struct MacNarrationTools: NarrationTools {
     static let targetRMS: Float = 0.12
     static let ceiling: Float = 0.89
 
-    public init() {}
+    /// whisper.cpp, preferred when installed: more accurate than the system recogniser on narration.
+    let whisper: WhisperTranscriber?
+
+    public init(whisper: WhisperTranscriber? = nil) {
+        self.whisper = whisper
+    }
 
     // MARK: Transcription
 
     public func transcribe(_ file: URL, language: String) async throws -> [(word: String, start: Double, end: Double)] {
+        if let whisper {
+            do {
+                return try await whisper.transcribe(file, language: language)
+            } catch {
+                Log.shared.warning("Whisper failed on \(file.lastPathComponent), using the system recogniser: \(error)")
+            }
+        }
         try await Self.authorise()
         guard let recognizer = SFSpeechRecognizer(locale: Locale(identifier: language)) ?? SFSpeechRecognizer(), recognizer.isAvailable else {
             throw YTAError(.toolMissing, "Speech recognition is not available for this language on this Mac.")

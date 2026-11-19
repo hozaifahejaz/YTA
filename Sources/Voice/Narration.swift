@@ -167,3 +167,57 @@ public enum TranscriptMatch {
         return Double(previous[b.count]) / Double(a.count)
     }
 }
+
+extension TranscriptMatch {
+    /// The script's own words, each timed from the word the check heard for it. Captions then show what was
+    /// written, not what the recogniser misheard. Words it missed take times spread between their neighbours.
+    public static func align(script: String, heard: [(word: String, start: Double, end: Double)], length: Double) -> [(word: String, start: Double, end: Double)] {
+        func key(_ text: String) -> String { text.lowercased().filter { $0.isLetter || $0.isNumber || $0 == "'" } }
+        let written = script.split(whereSeparator: \.isWhitespace).map(String.init).filter { !key($0).isEmpty }
+        guard !written.isEmpty else { return [] }
+        let heardWords = heard.filter { !key($0.word).isEmpty }
+        let a = written.map(key), b = heardWords.map { key($0.word) }
+        // Longest common subsequence, then walk back to pair words.
+        var table = Array(repeating: Array(repeating: 0, count: b.count + 1), count: a.count + 1)
+        if !b.isEmpty {
+            for i in stride(from: a.count - 1, through: 0, by: -1) {
+                for j in stride(from: b.count - 1, through: 0, by: -1) {
+                    table[i][j] = a[i] == b[j] ? table[i + 1][j + 1] + 1 : max(table[i + 1][j], table[i][j + 1])
+                }
+            }
+        }
+        var times: [(Double, Double)?] = Array(repeating: nil, count: a.count)
+        var i = 0, j = 0
+        while i < a.count, j < b.count {
+            if a[i] == b[j] {
+                times[i] = (heardWords[j].start, heardWords[j].end)
+                i += 1; j += 1
+            } else if table[i + 1][j] >= table[i][j + 1] {
+                i += 1
+            } else {
+                j += 1
+            }
+        }
+        // Fill gaps evenly between the nearest timed words (or the file's edges).
+        var result: [(word: String, start: Double, end: Double)] = []
+        var index = 0
+        while index < a.count {
+            if let time = times[index] {
+                result.append((written[index], time.0, time.1))
+                index += 1
+                continue
+            }
+            var end = index
+            while end < a.count, times[end] == nil { end += 1 }
+            let from = result.last?.end ?? 0
+            let to = end < a.count ? times[end]!.0 : max(from, length)
+            let step = max(0, to - from) / Double(end - index)
+            for k in index..<end {
+                let start = from + Double(k - index) * step
+                result.append((written[k], start, start + step))
+            }
+            index = end
+        }
+        return result
+    }
+}

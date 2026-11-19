@@ -1,5 +1,6 @@
 import AppKit
 import DesignSystem
+import Engines
 import Secrets
 import Support
 import SwiftUI
@@ -244,6 +245,17 @@ struct AutomationSettings: View {
                 Text("Spending caps")
             } footer: {
                 Text("The queue stops when a cap is reached. Engine spend is what the tools report for each run; on a subscription it counts against your plan, not your card. Leave a cap empty for no limit.")
+            }
+            Section {
+                Toggle("Keep tools up to date", isOn: Binding(get: { model.settings.autoUpdateTools }, set: { value in model.updateSettings { $0.autoUpdateTools = value } }))
+                if !model.outdatedTools.isEmpty {
+                    Text("Updates waiting: " + model.outdatedTools.map { "\($0.id.title) \($0.latest ?? "")" }.joined(separator: ", "))
+                        .font(Typography.caption).foregroundStyle(Palette.textSecondary)
+                }
+            } header: {
+                Text("Tools")
+            } footer: {
+                Text("Once a day YTA checks Claude Code, Codex, OpenCode, Node.js, Remotion, ffmpeg and Whisper for updates and installs them while nothing is running, using Homebrew, npm or the tool's own updater.")
             }
             Section("Images") {
                 Picker("Image route", selection: Binding(get: { model.settings.imageRoute }, set: { value in model.updateSettings { $0.imageRoute = value } })) {

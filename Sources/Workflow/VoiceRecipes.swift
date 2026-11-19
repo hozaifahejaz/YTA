@@ -178,7 +178,10 @@ public struct NarrationRecipe: NodeRecipe {
             let match = TranscriptMatch.score(script: text, heard: heard.map(\.word))
             attempts += 1
             if match >= minimumMatch || attempts >= 2 {
-                return BeatAudio(index: index, file: local, key: key, match: (match * 100).rounded() / 100, words: heard)
+                // Captions use the script's own words, timed from what was heard.
+                let length = (try? tools.duration(of: try folder.url(local))) ?? (heard.last?.end ?? 0)
+                let timed = TranscriptMatch.align(script: script, heard: heard, length: length)
+                return BeatAudio(index: index, file: local, key: key, match: (match * 100).rounded() / 100, words: timed)
             }
             try? FileManager.default.removeItem(at: try folder.url(local))
         }

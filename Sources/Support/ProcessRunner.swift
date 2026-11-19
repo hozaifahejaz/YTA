@@ -8,6 +8,12 @@ public struct ProcessResult: Sendable, Equatable {
     public let stderr: String
 
     public var succeeded: Bool { status == 0 }
+
+    public init(status: Int32, stdout: String, stderr: String) {
+        self.status = status
+        self.stdout = stdout
+        self.stderr = stderr
+    }
 }
 
 public enum ProcessRunner {

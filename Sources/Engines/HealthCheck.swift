@@ -9,6 +9,7 @@ public enum HealthItemID: String, Codable, Sendable, CaseIterable, Identifiable 
     case node
     case remotion
     case ffmpeg
+    case whisper
     case disk
 
     public var id: String { rawValue }
@@ -21,6 +22,7 @@ public enum HealthItemID: String, Codable, Sendable, CaseIterable, Identifiable 
         case .node: "Node.js"
         case .remotion: "Remotion"
         case .ffmpeg: "ffmpeg"
+        case .whisper: "Whisper"
         case .disk: "Free disk space"
         }
     }
@@ -33,6 +35,7 @@ public enum HealthItemID: String, Codable, Sendable, CaseIterable, Identifiable 
         case .node: "Needed to run Remotion."
         case .remotion: "Edits and renders videos."
         case .ffmpeg: "Audio and video checks."
+        case .whisper: "Listens to every voiceover beat and times the captions."
         case .disk: "Renders and media need room."
         }
     }
@@ -45,6 +48,7 @@ public enum HealthItemID: String, Codable, Sendable, CaseIterable, Identifiable 
         case .opencode: "opencode"
         case .node: "node"
         case .ffmpeg: "ffmpeg"
+        case .whisper: "whisper-cli"
         case .remotion, .disk: nil
         }
     }
@@ -57,7 +61,8 @@ public enum HealthItemID: String, Codable, Sendable, CaseIterable, Identifiable 
         case .opencode: "npm install -g opencode-ai"
         case .node: "Install Node.js LTS from nodejs.org"
         case .remotion: "YTA installs it on first use"
-        case .ffmpeg: "Comes with Remotion (npx remotion ffmpeg)"
+        case .ffmpeg: "brew install ffmpeg (Remotion's own copy is used meanwhile)"
+        case .whisper: "brew install whisper-cpp (YTA can install it)"
         case .disk: "Free some space or move storage in Settings"
         }
     }
@@ -141,6 +146,14 @@ public struct HealthCheck: Sendable {
             }
             // Remotion ships its own ffmpeg, so a missing system copy is only a warning.
             return HealthItem(id: id, status: .warning, detail: "Will use the copy that comes with Remotion")
+        case .whisper:
+            guard let url = await locate("whisper-cli") else {
+                return HealthItem(id: id, status: .warning, detail: "Not installed. The Mac's own speech recognition is used meanwhile.")
+            }
+            let model = paths.support.appendingPathComponent("whisper/ggml-small.bin")
+            let size = (try? FileManager.default.attributesOfItem(atPath: model.path)[.size] as? NSNumber)?.int64Value ?? 0
+            return HealthItem(id: id, status: size > 400_000_000 ? .ok : .warning, path: url.path, version: await version(url),
+                              detail: size > 400_000_000 ? nil : "Its speech model (about 470 MB) downloads on first use")
         default:
             guard let command = id.command, let url = await locate(command) else {
                 return HealthItem(id: id, status: .missing, detail: id.fix)

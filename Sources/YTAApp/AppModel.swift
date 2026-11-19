@@ -46,6 +46,10 @@ final class AppModel {
 
     private(set) var health: ToolsFile?
     private(set) var isCheckingHealth = false
+    /// The last tool update check, and the tools being installed or updated right now.
+    var toolUpdates: ToolUpdatesFile?
+    var busyTools: Set<HealthItemID> = []
+    var isCheckingUpdates = false
 
     // MARK: Presentation
 
@@ -115,6 +119,7 @@ final class AppModel {
         Task { await runHealthCheck() }
         Task { await followUpPublishedVideos() }
         Task { await clearOldWorkingFiles() }
+        Task { await maintainTools() }
     }
 
     func runHealthCheck() async {

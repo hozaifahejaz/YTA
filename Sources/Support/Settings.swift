@@ -119,6 +119,8 @@ public struct AppSettings: Codable, Sendable, Equatable {
     /// When a same-name channel counts as only a small overlap (section 7.3, step 4).
     public var nameOverlap: NameOverlapThresholds
     public var caps: CostCaps
+    /// Install updates to the tools YTA drives on its own, once a day, when nothing is running.
+    public var autoUpdateTools: Bool
 
     public init() {
         schemaVersion = Self.currentSchemaVersion
@@ -131,11 +133,12 @@ public struct AppSettings: Codable, Sendable, Equatable {
         finishedFirstRun = false
         nameOverlap = NameOverlapThresholds()
         caps = CostCaps()
+        autoUpdateTools = true
     }
 
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, engines, storagePath, imageRoute, automationDefault, defaultWriter, clearWorkingFilesAfterDays, finishedFirstRun
-        case nameOverlap, caps
+        case nameOverlap, caps, autoUpdateTools
     }
 
     /// Missing keys fall back to defaults, so older files keep loading.
@@ -154,6 +157,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         clearWorkingFilesAfterDays = try c.decodeIfPresent(Int.self, forKey: .clearWorkingFilesAfterDays)
         finishedFirstRun = try c.decodeIfPresent(Bool.self, forKey: .finishedFirstRun) ?? false
         caps = (try? c.decodeIfPresent(CostCaps.self, forKey: .caps)) ?? CostCaps()
+        autoUpdateTools = (try? c.decodeIfPresent(Bool.self, forKey: .autoUpdateTools)) ?? true
     }
 
     public func engine(_ id: EngineID) -> EngineSettings {

@@ -1,3 +1,4 @@
+import Engines
 import Foundation
 import Support
 
@@ -31,7 +32,52 @@ public struct RemotionProject: Sendable {
     }
 
     public var isInstalled: Bool {
-        FileManager.default.fileExists(atPath: cli.path) && installedLock == shippedLock
+        guard FileManager.default.fileExists(atPath: cli.path) else { return false }
+        if installedLock == shippedLock { return true }
+        // A newer Remotion the owner updated to stays, until the app ships something newer still.
+        if let upgraded = upgradedVersion, let shipped = Self.shippedVersion, !Semver.isNewer(shipped, than: upgraded) { return true }
+        return false
+    }
+
+    /// The Remotion version the app ships, pinned in its package.json.
+    public static var shippedVersion: String? {
+        guard let source = shipped, let data = try? Data(contentsOf: source.appendingPathComponent("package.json")),
+              let value = try? JSONDecoder().decode(JSONValue.self, from: data) else { return nil }
+        return value["dependencies"]?["remotion"]?.stringValue
+    }
+
+    /// The Remotion version installed in Application Support.
+    public var installedVersion: String? {
+        guard let data = try? Data(contentsOf: directory.appendingPathComponent("node_modules/remotion/package.json")),
+              let value = try? JSONDecoder().decode(JSONValue.self, from: data) else { return nil }
+        return value["version"]?.stringValue
+    }
+
+    var upgradedVersion: String? {
+        (try? String(contentsOf: directory.appendingPathComponent(".yta-remotion-version"), encoding: .utf8))?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    /// Moves every Remotion package to one newer version together. If npm fails, the shipped version is put back.
+    public func upgrade(to version: String, onLine: @escaping @Sendable (String) -> Void = { _ in }) async throws {
+        guard Semver.parse(version) != nil, version.allSatisfy({ $0.isNumber || $0 == "." }) else {
+            throw YTAError(.checkFailed, "\(version) is not a Remotion version.")
+        }
+        if !isInstalled { try await install(onLine: onLine) }
+        let npm = node.deletingLastPathComponent().appendingPathComponent("npm")
+        let packages = ["remotion", "@remotion/cli", "@remotion/media"].map { "\($0)@\(version)" }
+        onLine("Updating Remotion to \(version)")
+        let result = try await StreamingProcess.run(npm, arguments: ["install", "--no-audit", "--no-fund", "--save-exact"] + packages,
+                                                    environment: environment, workingDirectory: directory, onLine: onLine)
+        let marker = directory.appendingPathComponent(".yta-remotion-version")
+        guard result.succeeded, installedVersion == version else {
+            try? FileManager.default.removeItem(at: marker)
+            try? FileManager.default.removeItem(at: directory.appendingPathComponent(".yta-installed"))
+            try await install(onLine: onLine)
+            throw YTAError(.toolMissing, "Remotion \(version) could not be installed; the tested version is back in place.",
+                           suggestion: String(result.stderr.suffix(400)))
+        }
+        try version.write(to: marker, atomically: true, encoding: .utf8)
     }
 
     var installedLock: String? {
@@ -61,6 +107,7 @@ public struct RemotionProject: Sendable {
         guard result.succeeded else {
             throw YTAError(.toolMissing, "The Remotion project could not be installed.", suggestion: String(result.stderr.suffix(400)))
         }
+        try? FileManager.default.removeItem(at: directory.appendingPathComponent(".yta-remotion-version"))
         try (shippedLock ?? "").write(to: directory.appendingPathComponent(".yta-installed"), atomically: true, encoding: .utf8)
     }
 

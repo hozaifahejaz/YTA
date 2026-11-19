@@ -21,6 +21,9 @@ struct FakeRenderer: ArtworkRenderer {
     func renderBanner(_ layout: BannerLayout, direction: BrandDirection) throws -> RenderedImage {
         RenderedImage(png: Data("banner".utf8), width: 2560, height: 1440, inkBounds: nil)
     }
+    func renderThumbnail(_ layout: ThumbnailLayout, background: Data?, style: ThumbnailStyle, direction: BrandDirection, maxBytes: Int) throws -> RenderedImage {
+        RenderedImage(png: Data("thumb-\(background?.count ?? 0)".utf8), width: 1280, height: 720, inkBounds: nil)
+    }
 }
 
 @Suite struct BrandRecipeTests {

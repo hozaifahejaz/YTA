@@ -109,6 +109,10 @@ public struct ThumbnailLayout: Codable, Equatable, Sendable {
         let smallest = lines.map(\.frame.height).min() ?? 0
         checks.append(ArtworkCheck("Readable on a phone", passed: smallest >= minimumTextHeight,
                                    detail: String(format: "Text is %.0f px tall, at least %.0f needed.", smallest, minimumTextHeight)))
+        // A highlight colour too weak for the worst case is dropped rather than failing the thumbnail.
+        if highlight.contrast(with: behind) < 4.5 {
+            for index in lines.indices { lines[index].highlighted = false }
+        }
         let contrast = min(textColour.contrast(with: behind), lines.contains(where: \.highlighted) ? highlight.contrast(with: behind) : 21)
         checks.append(ArtworkCheck("Strong contrast", passed: contrast >= 4.5, detail: String(format: "%.1f to 1 at worst.", contrast)))
         let corner = !lines.contains { $0.frame.intersects(durationCorner) }

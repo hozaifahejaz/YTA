@@ -205,3 +205,52 @@ public struct SnapshotStore {
 
     public func latest() -> ChannelSnapshot? { all().first }
 }
+
+// MARK: Published video stats (section 8.5, learning loop)
+
+/// Public numbers for one published video at one moment.
+public struct VideoStats: Codable, Equatable, Sendable {
+    public var date: Date
+    public var views: Int?
+    public var likes: Int?
+    public var comments: Int?
+    public var source: DataSource
+
+    public init(date: Date, views: Int?, likes: Int?, comments: Int?, source: DataSource) {
+        self.date = date
+        self.views = views
+        self.likes = likes
+        self.comments = comments
+        self.source = source
+    }
+}
+
+extension YouTubeService {
+    /// Views, likes and comments. The page fallback gives views only.
+    public func stats(videoID: String) async throws -> VideoStats {
+        if let api = api(), let video = try await api.videos(ids: [videoID]).first {
+            return VideoStats(date: now(), views: video.viewCount, likes: video.likeCount, comments: video.commentCount, source: .api)
+        }
+        let views = try await reader.views(videoID: videoID)
+        return VideoStats(date: now(), views: views, likes: nil, comments: nil, source: .page)
+    }
+
+    /// The video id in a watch, share or Shorts link.
+    public static func videoID(fromLink link: String) -> String? {
+        let text = link.trimmingCharacters(in: .whitespacesAndNewlines)
+        if text.count == 11, text.allSatisfy({ $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" }) { return text }
+        guard let url = URL(string: text.hasPrefix("http") ? text : "https://" + text), let host = url.host?.lowercased() else { return nil }
+        if host.hasSuffix("youtu.be") { return url.pathComponents.dropFirst().first }
+        if url.pathComponents.count >= 3, ["shorts", "live", "embed"].contains(url.pathComponents[1]) { return url.pathComponents[2] }
+        return URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems?.first { $0.name == "v" }?.value
+    }
+}
+
+extension PageReader {
+    public func views(videoID: String) async throws -> Int? {
+        let result = try await pages.load(Self.url("/watch", query: [URLQueryItem(name: "v", value: videoID)]))
+        guard (200..<300).contains(result.status) else { throw YTAError(.network, "YouTube answered with status \(result.status).") }
+        guard let player = PageData.embedded("ytInitialPlayerResponse", in: result.html) else { return nil }
+        return player["videoDetails"]?["viewCount"]?.stringValue.flatMap { Int($0) }
+    }
+}

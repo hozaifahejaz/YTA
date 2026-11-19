@@ -160,7 +160,7 @@ private struct StatusChip: View {
     private var foreground: Color {
         switch status {
         case .working: Palette.accent
-        case .done: Palette.success
+        case .done, .published: Palette.success
         case .paused, .skipped: Palette.textTertiary
         case .queued: Palette.textSecondary
         }
@@ -169,7 +169,7 @@ private struct StatusChip: View {
     private var background: Color {
         switch status {
         case .working: Palette.accentSoft
-        case .done: Palette.successSoft
+        case .done, .published: Palette.successSoft
         default: Palette.surfaceMuted
         }
     }

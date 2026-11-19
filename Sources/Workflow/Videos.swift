@@ -6,7 +6,7 @@ import Support
 // MARK: Video file
 
 public enum VideoStatus: String, Codable, Sendable, CaseIterable {
-    case queued, working, paused, skipped, done
+    case queued, working, paused, skipped, done, published
     public var title: String { rawValue.capitalized }
 }
 
@@ -43,6 +43,11 @@ public struct VideoFile: Codable, Equatable, Sendable, Identifiable {
     public var settings: VideoSettings
     public var row: NodeList
     public var createdAt: Date
+    /// The credits page link the owner pasted, or nil while it is pending (section 8.5).
+    public var creditsLink: String?
+    public var finishedAt: Date?
+    public var publishedURL: String?
+    public var publishedAt: Date?
 
     public var working: String { "\(ChannelLayout.videos)/\(folderName)/\(VideoStore.workingFolder)" }
     public func path(_ relative: String) -> String { "\(working)/\(relative)" }

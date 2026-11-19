@@ -212,6 +212,18 @@ func request(in folder: URL, policy: ToolPolicy = .readOnly, schema: JSONValue? 
         }
     }
 
+    @Test func toolThatIgnoresItsPromptDoesNotCrashTheApp() async throws {
+        let folder = scratchFolder()
+        let script = folder.appendingPathComponent("quits-early")
+        try "#!/bin/sh\nexit 3\n".write(to: script, atomically: true, encoding: .utf8)
+        try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: script.path)
+        var big = request(in: folder)
+        big.prompt = String(repeating: "x", count: 1_000_000)
+        await #expect(throws: YTAError.self) {
+            _ = try await EngineRunner(adapter: ClaudeAdapter(), executable: script, environment: [:]).run(big)
+        }
+    }
+
     @Test func cancellingStopsTheTool() async throws {
         let folder = scratchFolder()
         let tool = try fakeTool(printing: claudeStream, sleep: 30, in: folder)

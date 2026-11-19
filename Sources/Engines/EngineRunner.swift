@@ -37,6 +37,7 @@ public struct EngineRunner: Sendable {
         let parser = adapter.makeParser(for: request)
         let log = RawLog(url: runFolder.appendingPathComponent("events.jsonl"), redactor: redactor)
 
+        BrokenPipe.ignore()
         let process = Process()
         process.executableURL = executable
         process.arguments = arguments
@@ -93,7 +94,9 @@ public struct EngineRunner: Sendable {
                 if let input = adapter.standardInput(for: request) {
                     let handle = stdin.fileHandleForWriting
                     DispatchQueue.global().async {
-                        handle.write(Data(input.utf8))
+                        // A tool that exits before reading its prompt closes the pipe.
+                        // That is reported through its exit status, not by crashing YTA.
+                        try? handle.write(contentsOf: Data(input.utf8))
                         try? handle.close()
                     }
                 } else {
@@ -335,4 +338,11 @@ public enum ResultCheck {
         }
         return value
     }
+}
+
+/// Writing to a pipe whose reader has gone away raises SIGPIPE, which ends the
+/// whole app by default. YTA ignores it once, so the write fails with EPIPE instead.
+enum BrokenPipe {
+    private static let installed: Void = { _ = signal(SIGPIPE, SIG_IGN) }()
+    static func ignore() { _ = installed }
 }

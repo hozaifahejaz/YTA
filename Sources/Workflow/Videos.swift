@@ -60,6 +60,8 @@ public struct ScriptStyle: Codable, Equatable, Sendable {
     /// The writer for new videos.
     public var writer: EngineID = .codex
     public var researchNotes = true
+    /// The voice whose first narration set `speakingRate`; nil until then.
+    public var calibratedFrom: String?
 
     public init() {}
 

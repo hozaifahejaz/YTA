@@ -28,6 +28,8 @@
 	<true/>
 	<key>NSHumanReadableCopyright</key>
 	<string>Personal use.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>YTA listens to each narration beat on this Mac to check it matches the script.</string>
 	<key>NSRequiresAquaSystemAppearance</key>
 	<true/>
 	<key>NSSupportsAutomaticTermination</key>

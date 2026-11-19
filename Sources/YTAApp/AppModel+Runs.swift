@@ -4,6 +4,7 @@ import Foundation
 import Support
 import UserNotifications
 import Artwork
+import MediaTools
 import Workflow
 import YouTubeData
 
@@ -38,7 +39,9 @@ extension AppModel {
             youtube: youtube,
             http: URLSessionHTTP(),
             artwork: CoreGraphicsRenderer(),
-            video: node.flatMap { VideoStore(folder: record.folder).video(containing: $0.id) }
+            video: node.flatMap { VideoStore(folder: record.folder).video(containing: $0.id) },
+            ai33Key: { [secrets] in try? secrets.valueForRequest(.ai33pro) },
+            narrationTools: MacNarrationTools()
         )
     }
 

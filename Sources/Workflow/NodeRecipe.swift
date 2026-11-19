@@ -43,6 +43,8 @@ public enum NodeRecipes {
         case "analysis": return AnalysisRecipe()
         case "interview": return InterviewRecipe()
         case "topicResearch": return TopicRecipe()
+        case "voice": return VoicePickRecipe()
+        case "narration": return NarrationRecipe()
         case "brief": return BriefRecipe()
         case "researchNotes": return ResearchNotesRecipe()
         case "prompt": return PromptRecipe()

@@ -1,4 +1,5 @@
 import Foundation
+import Voice
 
 /// Who does the work in a node.
 public enum NodeWorker: String, Codable, Sendable {
@@ -48,7 +49,9 @@ public struct NodeType: Sendable, Equatable, Identifiable {
         self.outputs = outputs
         self.approval = approval
         self.checks = checks
-        self.lockedReason = lockedReason
+        // The voice lock lifts only when a rule that pins v4 is in place.
+        let voiceUnlocked = VoiceLock.current?.isMeaningful == true
+        self.lockedReason = lockedReason == VoiceLock.lockedMessage && voiceUnlocked ? nil : lockedReason
     }
 
     public static let custom = NodeType(

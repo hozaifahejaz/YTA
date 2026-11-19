@@ -3,6 +3,7 @@ import Engines
 import Foundation
 import Brand
 import Support
+import Voice
 import YouTubeData
 
 /// Everything a node run needs from outside the workflow: settings and how to reach an engine.
@@ -23,6 +24,12 @@ public struct RunContext: Sendable {
     public var artwork: (any ArtworkRenderer)?
     /// The video a video node belongs to. Its inputs and outputs live in its `Working files`.
     public var video: VideoFile?
+    /// ai33pro's key, read only when a voice step needs it.
+    public var ai33Key: @Sendable () -> String?
+    /// Transcription and audio joining on the Mac. Nil where there is no AVFoundation.
+    public var narrationTools: (any NarrationTools)?
+    /// Always `VoiceLock.current` in the app. Tests set it with `@testable`; nothing else can.
+    var voiceRule: VoiceLock.Rule? = VoiceLock.current
 
     public init(
         settings: AppSettings,
@@ -34,7 +41,9 @@ public struct RunContext: Sendable {
         youtube: YouTubeService? = nil,
         http: HTTPClient = URLSessionHTTP(),
         artwork: (any ArtworkRenderer)? = nil,
-        video: VideoFile? = nil
+        video: VideoFile? = nil,
+        ai33Key: @escaping @Sendable () -> String? = { nil },
+        narrationTools: (any NarrationTools)? = nil
     ) {
         self.settings = settings
         self.tools = tools
@@ -46,6 +55,8 @@ public struct RunContext: Sendable {
         self.http = http
         self.artwork = artwork
         self.video = video
+        self.ai33Key = ai33Key
+        self.narrationTools = narrationTools
     }
 
     /// A node's file path inside the channel: video files sit in the video's `Working files`.

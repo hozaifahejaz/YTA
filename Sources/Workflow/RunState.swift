@@ -178,6 +178,8 @@ public struct RunDriver: Sendable {
                 return cancel(record)
             } catch {
                 record.attempts += 1
+                // The stage may have noted what it found on the saved record; keep it.
+                if let saved = try? store.load(record.id) { record.unexpectedFiles = saved.unexpectedFiles ?? record.unexpectedFiles }
                 let typed = error as? YTAError
                 record.error = typed?.message ?? String(describing: error)
                 record.errorKind = typed?.kind

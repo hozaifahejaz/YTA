@@ -205,7 +205,10 @@ public struct ShotsRecipe: NodeRecipe {
         let wanted = phrase.split(whereSeparator: \.isWhitespace).map { normalised(String($0)) }.filter { !$0.isEmpty }.prefix(3)
         guard !wanted.isEmpty, words.count >= wanted.count else { return nil }
         let plain = words.map(normalised)
-        for start in max(after + 1, 0)...(plain.count - wanted.count) where Array(plain[start..<(start + wanted.count)]) == Array(wanted) {
+        // Near the end of a beat there may be no room left for the phrase.
+        let first = max(after + 1, 0), last = plain.count - wanted.count
+        guard first <= last else { return nil }
+        for start in first...last where Array(plain[start..<(start + wanted.count)]) == Array(wanted) {
             return start
         }
         return nil

@@ -26,6 +26,8 @@ public struct RenderRecipe: NodeRecipe {
         if await queue.current != nil { context.onProgress("\(node.title): waiting for the render before it") }
         await queue.acquire(video.title)
         do {
+            // Stopped while it waited its turn.
+            try Task.checkCancellation()
             let raw = try folder.url("\(run.folder)/raw.mp4")
             let title = node.title
             let report = context.onProgress
@@ -45,7 +47,7 @@ public struct RenderRecipe: NodeRecipe {
         }
         let target = video.path(preview ? "render/preview.mp4" : "render/final.mp4")
         return RunDraft(files: [:], summary: preview ? "Preview rendered at half size" : "Rendered at \(timeline.width) × \(timeline.height)",
-                        moves: [target: "\(run.folder)/final.mp4"])
+                        moves: [target: "\(run.folder)/final.mp4"], keepsStepOpen: preview ? true : nil)
     }
 
     /// Two-pass loudness normalisation; the picture is copied untouched.

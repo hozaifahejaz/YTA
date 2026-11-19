@@ -83,12 +83,16 @@ public struct RunDraft: Codable, Sendable, Equatable {
     public var copies: [String: String]?
     /// Large files (renders) moved, not copied, from the run folder: channel path to the file inside the run folder.
     public var moves: [String: String]?
+    /// True for a side result such as a preview render: the step goes back to the state it had before the run.
+    public var keepsStepOpen: Bool?
 
-    public init(files: [String: String], summary: String? = nil, copies: [String: String]? = nil, moves: [String: String]? = nil) {
+    public init(files: [String: String], summary: String? = nil, copies: [String: String]? = nil, moves: [String: String]? = nil,
+                keepsStepOpen: Bool? = nil) {
         self.files = files
         self.summary = summary
         self.copies = copies
         self.moves = moves
+        self.keepsStepOpen = keepsStepOpen
     }
 }
 
@@ -180,7 +184,6 @@ public struct NodeRunExecutor: StageExecutor {
         } else if let note, !note.isEmpty {
             try folder.writeText(note, to: "\(run.folder)/note.md")
         }
-        try folder.writeJSON(Array(folder.fileInventory()).sorted(), to: "\(run.folder)/inventory-before.json")
     }
 
     private func execute(_ run: RunRecord, _ folder: ChannelFolder) async throws {
@@ -213,13 +216,24 @@ public struct NodeRunExecutor: StageExecutor {
         context.onProgress("\(node.title): starting \(engine.tool.displayName)")
         let title = node.title
         let report = context.onProgress
+        let before = folder.fileInventory()
         let outcome = try await runner.run(request) { report("\(title): \($0)") }
         UsageLog.append(outcome.usage, run: run, folder: folder)
+        let unexpected = UnexpectedFiles.since(before, folder: folder)
+        if !unexpected.isEmpty { try folder.writeJSON(unexpected, to: "\(run.folder)/\(UnexpectedFiles.file)") }
         try folder.writeJSON(StoredOutcome(text: outcome.text, structured: outcome.structured, usage: outcome.usage), to: "\(run.folder)/outcome.json")
     }
 
     private func validate(_ run: RunRecord, _ folder: ChannelFolder) async throws {
         let recipe = try recipe
+        // Flag anything the tool created outside its own run folder while it ran.
+        let unexpected = (try? folder.readJSON([String].self, "\(run.folder)/\(UnexpectedFiles.file)")) ?? []
+        if !unexpected.isEmpty {
+            var updated = run
+            updated.unexpectedFiles = unexpected
+            try RunStore(folder: folder).save(updated)
+            throw UnexpectedFiles.error(unexpected)
+        }
         var value = JSONValue.null
         if recipe.usesEngine {
             let stored = try folder.readJSON(StoredOutcome.self, "\(run.folder)/outcome.json")
@@ -232,16 +246,6 @@ public struct NodeRunExecutor: StageExecutor {
         let note = (try? folder.readText("\(run.folder)/note.md")) ?? self.note
         let draft = try await recipe.draft(from: value, run: run, node: node, folder: folder, context: context, note: note)
         try folder.writeJSON(draft, to: "\(run.folder)/draft.json")
-
-        // Flag anything the tool created outside its own run folder.
-        let before = Set((try? folder.readJSON([String].self, "\(run.folder)/inventory-before.json")) ?? [])
-        let unexpected = folder.fileInventory().subtracting(before).filter { !$0.hasPrefix("\(run.folder)/") }
-        if !unexpected.isEmpty {
-            var updated = run
-            updated.unexpectedFiles = unexpected.sorted()
-            try RunStore(folder: folder).save(updated)
-            throw YTAError(.checkFailed, "The engine created files outside its run folder: \(unexpected.sorted().joined(separator: ", ")).")
-        }
     }
 
     private func write(_ run: RunRecord, _ folder: ChannelFolder) throws {
@@ -267,6 +271,24 @@ public struct NodeRunExecutor: StageExecutor {
             try folder.regenerateAgentsFile(source: node.title)
         }
         try (try? recipe)?.afterWrite(draft: draft, node: node, folder: folder)
+    }
+}
+
+/// Files a tool created outside its own run folder while it ran (section 5.2). The check covers only the time
+/// the tool is running, so the app's own work in the channel (another step, a new video) is not mistaken for it.
+enum UnexpectedFiles {
+    static let file = "unexpected.json"
+
+    static func since(_ before: Set<String>, folder: ChannelFolder) -> [String] {
+        folder.fileInventory().subtracting(before).filter { path in
+            let name = (path as NSString).lastPathComponent
+            // Runs write to their own folders, Finder leaves .DS_Store behind, and the app's atomic writes pass through a temporary file.
+            return !path.hasPrefix(ChannelLayout.runs + "/") && name != ".DS_Store" && !(name.hasPrefix(".") && name.hasSuffix(".tmp"))
+        }.sorted()
+    }
+
+    static func error(_ files: [String]) -> YTAError {
+        YTAError(.checkFailed, "The engine created files outside its run folder: \(files.joined(separator: ", ")).")
     }
 }
 

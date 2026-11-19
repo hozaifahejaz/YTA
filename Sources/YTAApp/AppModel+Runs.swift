@@ -67,13 +67,18 @@ extension AppModel {
         }
         guard runTasks[node.id] == nil else { return }
         let driver = RunDriver(folder: record.folder, executor: NodeRunExecutor(node: node, context: context(for: record, node: node), note: note))
+        switch node.state {
+        case .done, .stale: statesBeforeRun[node.id] = (node.state, node.resultSummary)
+        case .waiting, .failed: statesBeforeRun[node.id] = nil
+        case .running, .needsYou: break
+        }
         setState(of: node.id, in: record.folder, to: .running, summary: "")
         launch(node.id, title: node.title, channel: record) { await driver.start(node) }
     }
 
     /// Approves the waiting draft, which writes it into the channel.
     func approve(_ node: Node) {
-        guard let record = selectedChannel, let run = latestRun(for: node), run.stage == .awaitingApproval else { return }
+        guard let record = selectedChannel, runTasks[node.id] == nil, let run = latestRun(for: node), run.stage == .awaitingApproval else { return }
         let driver = RunDriver(folder: record.folder, executor: NodeRunExecutor(node: node, context: context(for: record, node: node)))
         launch(node.id, title: node.title, channel: record) { await driver.resume(run, ownerApproved: true) }
     }
@@ -83,7 +88,9 @@ extension AppModel {
         guard let record = selectedChannel, let run = latestRun(for: node) else { return }
         let driver = RunDriver(folder: record.folder, executor: NodeRunExecutor(node: node, context: context(for: record, node: node)))
         _ = driver.cancel(run)
-        setState(of: node.id, in: record.folder, to: .waiting, summary: nil)
+        // Throwing away a second draft leaves the earlier result in place.
+        let before = statesBeforeRun[node.id]
+        setState(of: node.id, in: record.folder, to: before?.state ?? .waiting, summary: before?.summary)
         diskRevision += 1
     }
 
@@ -120,9 +127,17 @@ extension AppModel {
             note("\(run.nodeTitle) is ready for you to review")
             Notifier.post(title: "\(run.nodeTitle) needs you", body: "\(channel.manifest.name): a draft is ready to review.")
         case .finished:
-            let summary = RunStore(folder: folder).draft(for: run)?.summary ?? "Saved"
-            setState(of: run.nodeID, in: folder, to: .done, summary: summary)
-            note("\(run.nodeTitle) is done")
+            let draft = RunStore(folder: folder).draft(for: run)
+            let summary = draft?.summary ?? "Saved"
+            if draft?.keepsStepOpen == true {
+                // A preview is not the step's result: the step goes back to where it was.
+                let before = statesBeforeRun[run.nodeID]
+                setState(of: run.nodeID, in: folder, to: before?.state ?? .waiting, summary: before?.summary)
+                note("\(run.nodeTitle): \(summary)")
+            } else {
+                setState(of: run.nodeID, in: folder, to: .done, summary: summary)
+                note("\(run.nodeTitle) is done")
+            }
             if run.nodeType == "name" { adoptChosenName(in: channel) }
         case .failed:
             setState(of: run.nodeID, in: folder, to: .failed, summary: run.error)
@@ -131,13 +146,27 @@ extension AppModel {
                 Notifier.post(title: "Usage limit reached", body: "\(run.nodeTitle) stopped. It can run again once the limit resets.")
             }
         case .cancelled:
-            setState(of: run.nodeID, in: folder, to: .waiting, summary: nil)
+            // A stopped re-run leaves the earlier result in place.
+            let before = statesBeforeRun[run.nodeID]
+            setState(of: run.nodeID, in: folder, to: before?.state ?? .waiting, summary: before?.summary)
             note("Stopped \(run.nodeTitle)")
         default:
             break
         }
+        if run.stage != .awaitingApproval { statesBeforeRun[run.nodeID] = nil }
         diskRevision += 1
-        if run.stage == .finished || run.stage == .awaitingApproval { advanceQueue(channel) }
+        switch run.stage {
+        case .finished, .awaitingApproval, .failed:
+            // After a failure this stops the queue and says why, instead of leaving it marked as running.
+            advanceQueue(channel)
+        case .cancelled:
+            // Stopping a video's step pauses its queue; otherwise the queue would start the step again at once.
+            if VideoStore(folder: folder).video(containing: run.nodeID) != nil, runningQueues.remove(channel.manifest.id) != nil {
+                note("Queue paused for \(channel.manifest.name)")
+            }
+        default:
+            break
+        }
     }
 
     /// Updates a node's state in any channel's row, on disk and on screen.

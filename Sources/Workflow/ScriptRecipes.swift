@@ -345,7 +345,9 @@ public struct ScriptRecipe: NodeRecipe {
         let style = ScriptStyle.load(folder)
         let manifest = try folder.manifest()
         let banned = BannedPhrases.list(language: manifest.language, folder: folder)
-        let used = UsedPhrases.load(folder)
+        // Writing this video's script again must not count its own earlier openings as reuse.
+        let own = Set(UsedPhrases.distinctive(in: (try? folder.readJSON([ScriptBeat].self, video.path("script.beats.json"))) ?? []))
+        let used = UsedPhrases.load(folder).filter { !own.contains($0) }
         let target = style.targetWords(video.settings)
         let refined = (try? folder.readText(video.path("refined-prompt.md"))) ?? ""
 

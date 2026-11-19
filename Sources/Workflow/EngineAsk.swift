@@ -43,8 +43,11 @@ public struct EngineAsk: Sendable {
                                      schema: schema, policy: policy, maxBudgetUSD: 2, allowAPIKey: settings.allowAPIKey)
             context.onProgress("\(title): asking \(tool.displayName)")
             let report = context.onProgress
+            let before = folder.fileInventory()
             let outcome = try await runner.run(request) { report("\(title): \($0)") }
             UsageLog.append(outcome.usage, run: run, folder: folder)
+            let unexpected = UnexpectedFiles.since(before, folder: folder)
+            if !unexpected.isEmpty { throw UnexpectedFiles.error(unexpected) }
             do {
                 guard let value = try ResultCheck.structured(outcome, schema: schema) else {
                     throw YTAError(.schemaMismatch, "The result was empty.")

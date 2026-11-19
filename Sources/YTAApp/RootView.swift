@@ -58,7 +58,8 @@ struct RootView: View {
             Button("Remove", role: .destructive) { model.remove(node, force: true) }
             Button("Cancel", role: .cancel) {}
         } message: { node in
-            let broken = model.setupRow?.nodesBroken(byRemoving: node.id).map(\.title) ?? []
+            let row = model.video(containing: node.id)?.row ?? model.setupRow
+            let broken = row?.nodesBroken(byRemoving: node.id).map(\.title) ?? []
             Text("These steps use its result and will not be able to run: \(broken.joined(separator: ", ")).")
         }
     }

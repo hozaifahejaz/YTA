@@ -84,6 +84,8 @@ public enum StreamingProcess {
                 do {
                     try process.run()
                     control?.attach(process)
+                    // A task cancelled before the program started never reaches `onCancel` with it running.
+                    if Task.isCancelled { process.terminate() }
                 } catch {
                     guard finished.set() else { return }
                     continuation.resume(throwing: YTAError(.toolMissing, "Could not start \(executable.lastPathComponent)."))

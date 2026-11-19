@@ -83,7 +83,22 @@ public enum JSONMerge {
         else {
             return try encoder.encode(fresh)
         }
+        // A key the model knows but no longer writes was cleared (an optional set to nil, or a
+        // dictionary entry removed), so it must go. Only keys the model never had are carried over.
+        if let modelled = modelledKeys(T.self, in: existing) {
+            for key in modelled where overlay[key] == nil { base[key] = nil }
+        }
         for (key, value) in overlay { base[key] = value }
         return try encoder.encode(JSONValue.object(base))
+    }
+
+    /// The top-level keys of `existing` that `type` reads and writes back, or nil when the file can't be read as `type`.
+    static func modelledKeys<T: Encodable>(_ type: T.Type, in existing: Data) -> Set<String>? {
+        guard let decodable = type as? any Decodable.Type,
+              let old = try? JSONCoding.decoder().decode(decodable, from: existing),
+              let encodable = old as? any Encodable,
+              let data = try? JSONCoding.encoder().encode(encodable),
+              case .object(let object)? = try? JSONCoding.decoder().decode(JSONValue.self, from: data) else { return nil }
+        return Set(object.keys)
     }
 }

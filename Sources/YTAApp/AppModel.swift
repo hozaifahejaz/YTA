@@ -79,6 +79,8 @@ final class AppModel {
     var renderPausedFlag = false
     /// The latest progress line per running node id.
     var runProgress: [String: String] = [:]
+    /// Each running node's state and summary from before its run, to go back to after a stop or a preview.
+    @ObservationIgnored var statesBeforeRun: [String: (state: NodeState, summary: String?)] = [:]
     @ObservationIgnored let keepAwake = KeepAwake()
     @ObservationIgnored var planDefaults = PlanDefaults.load()
 

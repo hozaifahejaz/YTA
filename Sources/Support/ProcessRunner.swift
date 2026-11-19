@@ -95,7 +95,7 @@ private final class OutputCollector: @unchecked Sendable {
     var errString: String { lock.lock(); defer { lock.unlock() }; return String(decoding: err, as: UTF8.self) }
 }
 
-private final class OnceFlag: @unchecked Sendable {
+final class OnceFlag: @unchecked Sendable {
     private let lock = NSLock()
     private var done = false
     /// Returns true the first time only.

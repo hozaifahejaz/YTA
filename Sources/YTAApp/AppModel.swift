@@ -75,6 +75,8 @@ final class AppModel {
 
     /// Running tasks by node id.
     @ObservationIgnored var runTasks: [String: Task<Void, Never>] = [:]
+    /// Shown on the render node's Pause button.
+    var renderPausedFlag = false
     /// The latest progress line per running node id.
     var runProgress: [String: String] = [:]
     @ObservationIgnored let keepAwake = KeepAwake()

@@ -28,6 +28,8 @@ public struct RunContext: Sendable {
     public var ai33Key: @Sendable () -> String?
     /// Transcription and audio joining on the Mac. Nil where there is no AVFoundation.
     public var narrationTools: (any NarrationTools)?
+    /// The Remotion project and Node.js, for rendering and checking. Nil where they are not set up.
+    public var remotion: RemotionProject?
     /// A media service's key by source id ("pexels", "pixabay"), read only when that source is searched.
     public var mediaKey: @Sendable (String) -> String?
     /// Always `VoiceLock.current` in the app. Tests set it with `@testable`; nothing else can.
@@ -46,7 +48,8 @@ public struct RunContext: Sendable {
         video: VideoFile? = nil,
         ai33Key: @escaping @Sendable () -> String? = { nil },
         narrationTools: (any NarrationTools)? = nil,
-        mediaKey: @escaping @Sendable (String) -> String? = { _ in nil }
+        mediaKey: @escaping @Sendable (String) -> String? = { _ in nil },
+        remotion: RemotionProject? = nil
     ) {
         self.settings = settings
         self.tools = tools
@@ -61,6 +64,7 @@ public struct RunContext: Sendable {
         self.ai33Key = ai33Key
         self.narrationTools = narrationTools
         self.mediaKey = mediaKey
+        self.remotion = remotion
     }
 
     /// A node's file path inside the channel: video files sit in the video's `Working files`.
@@ -77,11 +81,14 @@ public struct RunDraft: Codable, Sendable, Equatable {
     public var summary: String?
     /// Binary files the run made in its own folder: channel path to the file inside the run folder.
     public var copies: [String: String]?
+    /// Large files (renders) moved, not copied, from the run folder: channel path to the file inside the run folder.
+    public var moves: [String: String]?
 
-    public init(files: [String: String], summary: String? = nil, copies: [String: String]? = nil) {
+    public init(files: [String: String], summary: String? = nil, copies: [String: String]? = nil, moves: [String: String]? = nil) {
         self.files = files
         self.summary = summary
         self.copies = copies
+        self.moves = moves
     }
 }
 
@@ -247,6 +254,17 @@ public struct NodeRunExecutor: StageExecutor {
         }
         for (path, source) in draft.copies ?? [:] {
             try folder.write(try folder.read(source), to: path, source: node.title)
+        }
+        for (path, source) in draft.moves ?? [:] {
+            let from = try folder.url(source)
+            let to = try folder.url(path)
+            guard FileManager.default.fileExists(atPath: from.path) else {
+                if FileManager.default.fileExists(atPath: to.path) { continue }
+                throw YTAError(.notFound, "\(source) is missing.")
+            }
+            try FileManager.default.createDirectory(at: to.deletingLastPathComponent(), withIntermediateDirectories: true)
+            try? FileManager.default.removeItem(at: to)
+            try FileManager.default.moveItem(at: from, to: to)
         }
         if draft.files.keys.contains(where: { $0.hasPrefix("profile/") }) {
             try folder.regenerateAgentsFile(source: node.title)

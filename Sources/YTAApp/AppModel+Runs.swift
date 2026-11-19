@@ -48,7 +48,8 @@ extension AppModel {
                 case "pixabay": try? secrets.valueForRequest(.pixabay)
                 default: nil
                 }
-            }
+            },
+            remotion: remotionProject
         )
     }
 

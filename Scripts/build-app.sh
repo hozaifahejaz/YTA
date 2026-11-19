@@ -43,7 +43,7 @@ done
 
 # App resources (fonts, skills, prompt templates) live in Resources/.
 if [ -d Resources ]; then
-  rsync -a --exclude '.gitkeep' Resources/ "$APP/Contents/Resources/"
+  rsync -a --exclude '.gitkeep' --exclude 'node_modules' --exclude 'out' Resources/ "$APP/Contents/Resources/"
 fi
 
 if [ -f Scripts/AppIcon.icns ]; then

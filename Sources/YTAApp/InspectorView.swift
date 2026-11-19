@@ -355,6 +355,9 @@ struct RunSection: View {
                         .foregroundStyle(Palette.textSecondary)
                         .lineLimit(2)
                     Spacer()
+                    if node.type == "render" {
+                        Button(model.renderPausedFlag ? "Resume" : "Pause") { model.toggleRenderPause() }
+                    }
                     Button("Stop") { model.stop(node) }
                 }
             } else if let topics = model.pendingTopics(for: node) {
@@ -378,6 +381,13 @@ struct RunSection: View {
             } else if let banner = model.bannerResult(for: node) {
                 BannerPreviewView(node: node, result: banner.0, run: banner.1)
             } else if let run, run.stage == .awaitingApproval, let draft = model.draft(for: run) {
+                if node.type == "cutReview" {
+                    Button {
+                        model.openStudio(for: node)
+                    } label: {
+                        Label("Open in Remotion Studio", systemImage: "play.rectangle")
+                    }
+                }
                 ForEach(draft.files.keys.sorted(), id: \.self) { file in
                     VStack(alignment: .leading, spacing: Spacing.xs) {
                         Text(file).font(Typography.mono).foregroundStyle(Palette.textTertiary)
@@ -408,6 +418,12 @@ struct RunSection: View {
                     NicheBriefView(node: node)
                 } else if node.type == "interview" {
                     InterviewView(node: node)
+                } else if node.type == "editingStyle" {
+                    EditingStyleView(node: node)
+                } else if node.type == "cutReview" {
+                    CutReviewView(node: node)
+                } else if node.type == "render" {
+                    RenderControls(node: node)
                 } else {
                 HStack {
                     if let run, let usage = run.engine {

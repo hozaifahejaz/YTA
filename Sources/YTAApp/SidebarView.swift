@@ -45,6 +45,12 @@ struct SidebarView: View {
                 }
                 .help("Add a channel")
             }
+            ToolbarItem {
+                Button { model.showYouTubeLookup = true } label: {
+                    Label("YouTube Lookup", systemImage: "magnifyingglass")
+                }
+                .help("Check a handle or snapshot a channel")
+            }
         }
     }
 }

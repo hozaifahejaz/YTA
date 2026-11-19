@@ -26,6 +26,8 @@ For quick work on the code, `swift run YTA` starts the app without making a bund
 
 `swift run yta-engine-check` runs one small step through each installed engine (Claude Code, Codex, OpenCode) in a throwaway channel and reports the result.
 
+`swift run yta-youtube-check [@handle]` checks a handle and takes a channel snapshot against live YouTube, through the API if a key is saved in Settings and through public pages either way. Add `--pages-only` to skip the API.
+
 The Command Line Tools do not include SwiftUI's macro plugin, so YTA never uses `@State`. Views keep local state in `LocalState` instead (see `Sources/DesignSystem/LocalState.swift`).
 
 ## Where things live
@@ -61,7 +63,7 @@ Built in the milestone order of section 11 of the specification.
 - [x] 2. Channel store: folder layout, path guard, atomic writes, folder watching, history
 - [x] 3. Workflow engine: run state machine, crash resume, notifications, menu bar
 - [x] 4. Engines: Claude Code, Codex and OpenCode adapters, clean environment, run logs, result checks, plan defaults
-- [ ] 5. YouTube data
+- [x] 5. YouTube data: Data API client, quota ledger, page fallback, handle check, channel snapshot
 - [ ] 6. Naming, brand, profile picture, banner, setup kit, playbook
 - [ ] 7. Skills and niche research
 - [ ] 8. Import

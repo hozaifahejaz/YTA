@@ -38,6 +38,9 @@ struct RootView: View {
         .sheet(isPresented: $model.showHealthCheck) {
             HealthCheckView()
         }
+        .sheet(isPresented: $model.showYouTubeLookup) {
+            YouTubeLookupView()
+        }
         .alert(
             model.alert?.message ?? "",
             isPresented: Binding(get: { model.alert != nil }, set: { if !$0 { model.alert = nil } }),

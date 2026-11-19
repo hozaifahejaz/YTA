@@ -23,6 +23,9 @@ struct YTAApp: App {
                     .keyboardShortcut("n")
                 Button("Import Channel…") { model.showImportChannel = true }
                     .keyboardShortcut("i", modifiers: [.command, .shift])
+                Divider()
+                Button("YouTube Lookup…") { model.showYouTubeLookup = true }
+                    .keyboardShortcut("y", modifiers: [.command, .shift])
             }
             CommandMenu("Steps") {
                 ForEach(1...9, id: \.self) { number in

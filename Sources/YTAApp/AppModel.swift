@@ -6,6 +6,7 @@ import Observation
 import Secrets
 import Support
 import Workflow
+import YouTubeData
 
 /// One line in the activity strip.
 struct ActivityLine: Identifiable, Equatable {
@@ -46,6 +47,7 @@ final class AppModel {
     var showNewChannel = false
     var showImportChannel = false
     var showHealthCheck = false
+    var showYouTubeLookup = false
     var showInspector = true
     var pendingRemoval: Node?
     var alert: YTAError?
@@ -54,6 +56,15 @@ final class AppModel {
     var diskRevision = 0
 
     @ObservationIgnored private var watcher: ChannelWatcher?
+
+    // MARK: YouTube data
+
+    /// API units used today; shared with `yta-youtube-check`.
+    let quotaLedger = QuotaLedger(file: AppPaths.standard().quotaFile)
+    /// One public page every few seconds, whoever asks.
+    let youtubePages = PacedPageSource(WebPageSource())
+    /// Bumped after YouTube calls so the quota display redraws.
+    var quotaRevision = 0
 
     // MARK: Runs
 

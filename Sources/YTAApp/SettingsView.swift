@@ -3,6 +3,7 @@ import DesignSystem
 import Secrets
 import Support
 import SwiftUI
+import YouTubeData
 
 /// Settings: Engines and plan, Keys, Storage and disk, Automation defaults (section 6.4).
 struct SettingsView: View {
@@ -103,6 +104,9 @@ struct KeyRow: View {
             Text(key.purpose)
                 .font(Typography.callout)
                 .foregroundStyle(Palette.textSecondary)
+            if key == .youtubeDataAPI && saved.value {
+                QuotaLine(usage: model.quotaUsage, hasKey: true)
+            }
             HStack {
                 SecureField(saved.value ? "Replace the saved key" : "Paste the key", text: $value.value)
                     .textFieldStyle(.roundedBorder)

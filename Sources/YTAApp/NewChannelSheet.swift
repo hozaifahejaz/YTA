@@ -105,7 +105,7 @@ struct NewChannelSheet: View {
         model.createChannel(NewChannelRequest(
             workingName: name,
             niche: mode == .new && form.nicheChoice == .have ? form.niche.trimmingCharacters(in: .whitespacesAndNewlines) : nil,
-            format: format,
+            format: form.format,
             language: form.language.trimmingCharacters(in: .whitespaces).isEmpty ? "English" : form.language,
             country: form.country.trimmingCharacters(in: .whitespaces).isEmpty ? nil : form.country,
             origin: mode == .new ? .new : .imported,

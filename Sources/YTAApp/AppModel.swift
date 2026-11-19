@@ -51,7 +51,7 @@ final class AppModel {
     var alert: YTAError?
     private(set) var activity: [ActivityLine] = []
     /// Bumped after any write a view reads straight from disk (sources, history), so it redraws.
-    private(set) var diskRevision = 0
+    var diskRevision = 0
 
     @ObservationIgnored private var watcher: ChannelWatcher?
 

@@ -157,7 +157,7 @@ public actor RenderQueue {
     public static let shared = RenderQueue()
     private var busy = false
     private var waiting: [CheckedContinuation<Void, Never>] = []
-    public let control = ProcessControl()
+    public nonisolated let control = ProcessControl()
     public private(set) var current: String?
 
     public func acquire(_ title: String) async {

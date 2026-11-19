@@ -2,6 +2,7 @@
 import CoreGraphics
 #endif
 import Foundation
+import Support
 
 /// A drawn image and what the renderer measured on its pixels.
 public struct RenderedImage: Sendable {
@@ -11,11 +12,15 @@ public struct RenderedImage: Sendable {
     /// The bounding box of every pixel that differs from the background, top-left origin.
     public let inkBounds: CGRect?
 
-    public init(png: Data, width: Int, height: Int, inkBounds: CGRect?) {
+    /// Set when the data is JPEG, used to stay under an upload size limit.
+    public var isJPEG = false
+
+    public init(png: Data, width: Int, height: Int, inkBounds: CGRect?, isJPEG: Bool = false) {
         self.png = png
         self.width = width
         self.height = height
         self.inkBounds = inkBounds
+        self.isJPEG = isJPEG
     }
 }
 
@@ -27,10 +32,15 @@ public protocol ArtworkRenderer: Sendable {
     func renderBanner(_ layout: BannerLayout, direction: BrandDirection) throws -> RenderedImage
     /// The main colours of an image file, most common first, and its pixel size. Used for imported channels.
     func inspect(image data: Data, colours: Int) -> (colours: [RGB], width: Int, height: Int)?
+    /// A thumbnail: the background image (or the brand colour), treated, with the planned text on top.
+    func renderThumbnail(_ layout: ThumbnailLayout, background: Data?, style: ThumbnailStyle, direction: BrandDirection, maxBytes: Int) throws -> RenderedImage
 }
 
 extension ArtworkRenderer {
     public func inspect(image data: Data, colours: Int) -> (colours: [RGB], width: Int, height: Int)? { nil }
+    public func renderThumbnail(_ layout: ThumbnailLayout, background: Data?, style: ThumbnailStyle, direction: BrandDirection, maxBytes: Int) throws -> RenderedImage {
+        throw YTAError(.toolMissing, "Thumbnails are drawn by the Mac app.")
+    }
 }
 
 public enum FontWeight: String, Codable, Sendable {

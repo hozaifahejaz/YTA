@@ -206,3 +206,106 @@ extension CoreGraphicsRenderer {
         return (Array(top), image.width, image.height)
     }
 }
+
+extension CoreGraphicsRenderer {
+    /// Section 8.5: background image (aspect-filled and treated), a scrim behind the text, then the text.
+    public func renderThumbnail(_ layout: ThumbnailLayout, background: Data?, style: ThumbnailStyle, direction: BrandDirection,
+                                maxBytes: Int) throws -> RenderedImage {
+        let width = Int(ThumbnailLayout.width), height = Int(ThumbnailLayout.height)
+        let context = try Self.context(width: width, height: height)
+        let full = CGRect(x: 0, y: 0, width: width, height: height)
+        context.setFillColor(Self.cg(direction.background))
+        context.fill(full)
+
+        if let background, let source = CGImageSourceCreateWithData(background as CFData, nil),
+           let image = CGImageSourceCreateImageAtIndex(source, 0, nil) {
+            let scale = max(Double(width) / Double(image.width), Double(height) / Double(image.height))
+            let drawn = CGSize(width: Double(image.width) * scale, height: Double(image.height) * scale)
+            context.interpolationQuality = .high
+            context.draw(image, in: CGRect(x: (Double(width) - drawn.width) / 2, y: (Double(height) - drawn.height) / 2,
+                                           width: drawn.width, height: drawn.height))
+            switch style.image {
+            case .natural:
+                break
+            case .darkened:
+                context.setFillColor(Self.cg(.black, alpha: 0.28))
+                context.fill(full)
+            case .desaturated:
+                context.saveGState()
+                context.setBlendMode(.saturation)
+                context.setFillColor(Self.cg(RGB(r: 0.5, g: 0.5, b: 0.5)))
+                context.fill(full)
+                context.restoreGState()
+                context.setFillColor(Self.cg(.black, alpha: 0.18))
+                context.fill(full)
+            case .duotone:
+                context.saveGState()
+                context.setBlendMode(.color)
+                context.setFillColor(Self.cg(direction.accent, alpha: 0.85))
+                context.fill(full)
+                context.restoreGState()
+                context.setFillColor(Self.cg(.black, alpha: 0.22))
+                context.fill(full)
+            }
+        }
+
+        // Layout frames are top-left; CoreGraphics is bottom-left.
+        func flipped(_ rect: CGRect) -> CGRect {
+            CGRect(x: rect.minX, y: Double(height) - rect.maxY, width: rect.width, height: rect.height)
+        }
+        if style.type == .boxed {
+            context.setFillColor(Self.cg(layout.scrimColour, alpha: layout.scrimOpacity))
+            context.addPath(CGPath(roundedRect: flipped(layout.scrim), cornerWidth: 14, cornerHeight: 14, transform: nil))
+            context.fillPath()
+        } else {
+            // A soft gradient that is darkest behind the text.
+            let scrim = flipped(layout.scrim.insetBy(dx: -80, dy: -60))
+            let colours = [Self.cg(layout.scrimColour, alpha: layout.scrimOpacity), Self.cg(layout.scrimColour, alpha: 0)] as CFArray
+            if let gradient = CGGradient(colorsSpace: Self.space, colors: colours, locations: [0.55, 1]) {
+                let centre = CGPoint(x: scrim.midX, y: scrim.midY)
+                context.saveGState()
+                context.scaleBy(x: 1, y: 1)
+                context.drawRadialGradient(gradient, startCenter: centre, startRadius: 0, endCenter: centre,
+                                           endRadius: max(scrim.width, scrim.height) * 0.62, options: [])
+                context.restoreGState()
+            }
+        }
+
+        for line in layout.lines {
+            let colour = line.highlighted ? layout.highlightColour : layout.textColour
+            let ctLine = Self.line(line.text, typeface: direction.typeface, size: line.size, weight: .bold, colour: colour)
+            let bounds = CTLineGetBoundsWithOptions(ctLine, .useGlyphPathBounds)
+            let origin = CGPoint(x: line.frame.minX - bounds.minX, y: Double(height) - line.frame.maxY - bounds.minY)
+            if style.type == .outlined {
+                context.saveGState()
+                context.setTextDrawingMode(.stroke)
+                context.setLineWidth(max(4, line.size * 0.07))
+                context.setLineJoin(.round)
+                context.setStrokeColor(Self.cg(.black))
+                context.textPosition = origin
+                let outline = Self.line(line.text, typeface: direction.typeface, size: line.size, weight: .bold, colour: .black)
+                CTLineDraw(outline, context)
+                context.restoreGState()
+            } else {
+                context.setShadow(offset: CGSize(width: 0, height: -3), blur: 14, color: Self.cg(.black, alpha: 0.55))
+            }
+            context.textPosition = origin
+            context.setTextDrawingMode(.fill)
+            CTLineDraw(ctLine, context)
+            context.setShadow(offset: .zero, blur: 0, color: nil)
+        }
+
+        var result = try Self.finish(context, background: direction.background, measureInk: false)
+        if result.png.count > maxBytes, let image = context.makeImage() {
+            for quality in [0.92, 0.85, 0.75, 0.6] {
+                let data = NSMutableData()
+                guard let destination = CGImageDestinationCreateWithData(data, UTType.jpeg.identifier as CFString, 1, nil) else { break }
+                CGImageDestinationAddImage(destination, image, [kCGImageDestinationLossyCompressionQuality: quality] as CFDictionary)
+                guard CGImageDestinationFinalize(destination) else { break }
+                result = RenderedImage(png: data as Data, width: width, height: height, inkBounds: nil, isJPEG: true)
+                if data.length <= maxBytes { break }
+            }
+        }
+        return result
+    }
+}

@@ -180,7 +180,7 @@ public struct SnapshotStore {
         self.channel = channel
     }
 
-    static func fileName(for date: Date) -> String {
+    public static func fileName(for date: Date) -> String {
         let formatter = DateFormatter()
         formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.timeZone = TimeZone(identifier: "UTC")

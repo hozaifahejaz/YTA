@@ -38,6 +38,10 @@ public enum NodeRecipes {
         switch node.type {
         case "niche": return NicheRecipe()
         case "skills": return SkillsRecipe()
+        case "importLink": return ImportLinkRecipe()
+        case "snapshot": return SnapshotRecipe()
+        case "analysis": return AnalysisRecipe()
+        case "interview": return InterviewRecipe()
         case "name": return NameRecipe()
         case "brand": return BrandRecipe()
         case "avatar": return AvatarRecipe()

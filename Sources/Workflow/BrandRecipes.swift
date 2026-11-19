@@ -58,7 +58,15 @@ public struct BrandRecipe: NodeRecipe {
         - `why` it suits the channel's subject and audience
 
         Make the three directions clearly different from each other. Avoid clichés of the niche and avoid neon or rainbow palettes unless the subject calls for them.
-        """
+        """ + existingNote(folder)
+    }
+
+    /// For an imported channel, one direction keeps the look viewers already know.
+    func existingNote(_ folder: ChannelFolder) -> String {
+        guard let existing = try? folder.readJSON(ExistingBrand.self, ExistingBrand.output) else { return "" }
+        let colours = (existing.avatarColours + existing.bannerColours).map(\.hex)
+        guard !colours.isEmpty else { return "" }
+        return "\n\nThis channel already exists. Its current profile picture and banner use these colours, most common first: \(colours.joined(separator: ", ")). Make the first direction keep that look, tidied up to pass the contrast rule; the other two may redesign it."
     }
 
     public func returnInstructions(node: Node) -> String {

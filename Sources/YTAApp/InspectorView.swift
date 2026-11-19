@@ -398,6 +398,8 @@ struct RunSection: View {
                 }
                 if node.type == "niche" {
                     NicheBriefView(node: node)
+                } else if node.type == "interview" {
+                    InterviewView(node: node)
                 } else {
                 HStack {
                     if let run, let usage = run.engine {

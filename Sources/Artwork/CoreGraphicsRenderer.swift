@@ -175,3 +175,34 @@ public struct CoreGraphicsRenderer: ArtworkRenderer {
         return CGRect(x: minX, y: minY, width: maxX - minX + 1, height: maxY - minY + 1)
     }
 }
+
+extension CoreGraphicsRenderer {
+    /// Draws the image at 48 × 48 and counts colours in coarse buckets; returns each bucket's average.
+    public func inspect(image data: Data, colours: Int) -> (colours: [RGB], width: Int, height: Int)? {
+        guard let source = CGImageSourceCreateWithData(data as CFData, nil),
+              let image = CGImageSourceCreateImageAtIndex(source, 0, nil) else { return nil }
+        let side = 48
+        var pixels = [UInt8](repeating: 0, count: side * side * 4)
+        let drawn = pixels.withUnsafeMutableBytes { buffer -> Bool in
+            guard let context = CGContext(data: buffer.baseAddress, width: side, height: side, bitsPerComponent: 8,
+                                          bytesPerRow: side * 4, space: CGColorSpace(name: CGColorSpace.sRGB)!,
+                                          bitmapInfo: CGImageAlphaInfo.premultipliedLast.rawValue) else { return false }
+            context.interpolationQuality = .medium
+            context.draw(image, in: CGRect(x: 0, y: 0, width: side, height: side))
+            return true
+        }
+        guard drawn else { return nil }
+        var buckets: [Int: (count: Int, r: Int, g: Int, b: Int)] = [:]
+        for index in stride(from: 0, to: pixels.count, by: 4) where pixels[index + 3] > 200 {
+            let r = Int(pixels[index]), g = Int(pixels[index + 1]), b = Int(pixels[index + 2])
+            let key = (r >> 5) << 6 | (g >> 5) << 3 | (b >> 5)
+            let old = buckets[key] ?? (0, 0, 0, 0)
+            buckets[key] = (old.count + 1, old.r + r, old.g + g, old.b + b)
+        }
+        let top = buckets.values.sorted { $0.count > $1.count }.prefix(colours).map { bucket in
+            RGB(r: Double(bucket.r) / Double(bucket.count) / 255, g: Double(bucket.g) / Double(bucket.count) / 255,
+                b: Double(bucket.b) / Double(bucket.count) / 255)
+        }
+        return (Array(top), image.width, image.height)
+    }
+}

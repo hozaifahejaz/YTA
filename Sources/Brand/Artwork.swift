@@ -25,6 +25,12 @@ public protocol ArtworkRenderer: Sendable {
     func measure(_ text: String, typeface: String, size: Double, weight: FontWeight) -> CGSize
     func renderAvatar(_ variant: AvatarVariant, typeface: String, size: Int) throws -> RenderedImage
     func renderBanner(_ layout: BannerLayout, direction: BrandDirection) throws -> RenderedImage
+    /// The main colours of an image file, most common first, and its pixel size. Used for imported channels.
+    func inspect(image data: Data, colours: Int) -> (colours: [RGB], width: Int, height: Int)?
+}
+
+extension ArtworkRenderer {
+    public func inspect(image data: Data, colours: Int) -> (colours: [RGB], width: Int, height: Int)? { nil }
 }
 
 public enum FontWeight: String, Codable, Sendable {

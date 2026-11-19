@@ -64,7 +64,12 @@ Built in the milestone order of section 11 of the specification.
 - [x] 3. Workflow engine: run state machine, crash resume, notifications, menu bar
 - [x] 4. Engines: Claude Code, Codex and OpenCode adapters, clean environment, run logs, result checks, plan defaults
 - [x] 5. YouTube data: Data API client, quota ledger, page fallback, handle check, channel snapshot
-- [ ] 6. Naming, brand, profile picture, banner, setup kit, playbook
-- [ ] 7. Skills and niche research
-- [ ] 8. Import
-- [ ] 9 to 14. Videos: queue, scripts, voice, media, editing, finishing, automation
+- [x] 6. Naming, brand, profile picture, banner, setup kit, playbook
+- [x] 7. Skills and niche research
+- [x] 8. Import
+- [x] 9. Queue, topic research, script pipeline
+- [x] 10. Voice: ai33pro client, v4 lock, voice pick, narration and timings (locked until the v4 setting is confirmed)
+- [x] 11. Media: source clients, licence rules, ledger, ranking, review board, music library
+- [x] 12. Editing: timeline, Remotion project, Studio review, render queue, final check
+- [x] 13. Finishing: thumbnail style, thumbnails, YouTube Kit.docx, credits, final gate, calendar, learning loop
+- [ ] 14. Automation dial, cost caps and disk controls are built; the unattended run on a test channel is still to do

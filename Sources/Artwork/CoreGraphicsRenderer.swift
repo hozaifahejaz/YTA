@@ -18,7 +18,7 @@ public enum FontLibrary {
             return bundled
         }
         var url = URL(fileURLWithPath: #filePath)
-        for _ in 0..<4 { url.deleteLastPathComponent() }
+        for _ in 0..<3 { url.deleteLastPathComponent() }
         let repo = url.appendingPathComponent("Resources/Fonts")
         return FileManager.default.fileExists(atPath: repo.path) ? repo : nil
     }

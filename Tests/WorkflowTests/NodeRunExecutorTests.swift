@@ -82,7 +82,7 @@ func claudeResult(_ structured: String) -> String {
             claudeResult(#"{"content":"Fixed","summary":"ok"}"#),
         ], in: tools)
         let result = await RunDriver(folder: folder, executor: NodeRunExecutor(node: node, context: context(tool))).start(node)
-        #expect(result.stage == .awaitingApproval)
+        #expect(result.stage == .awaitingApproval, "\(result.error ?? "")")
         #expect(try String(contentsOf: tools.appendingPathComponent("count"), encoding: .utf8).trimmingCharacters(in: .whitespacesAndNewlines) == "2")
         #expect(try folder.readText("\(result.folder)/prompt.md").isEmpty == false)
     }

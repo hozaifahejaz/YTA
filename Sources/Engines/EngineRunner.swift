@@ -50,22 +50,21 @@ public struct EngineRunner: Sendable {
         process.standardInput = stdin
 
         let state = RunState(parser: parser, onProgress: onProgress, log: log)
-        stdout.fileHandleForReading.readabilityHandler = { handle in
-            state.consume(handle.availableData)
-        }
         let errBuffer = LockedData()
-        stderr.fileHandleForReading.readabilityHandler = { handle in
-            errBuffer.append(handle.availableData)
-        }
+        // Each pipe is read to its end on its own thread. The result is only read
+        // once both are drained, so no line can arrive after the run is judged.
+        let drained = DispatchGroup()
+        let outHandle = stdout.fileHandleForReading
+        let errHandle = stderr.fileHandleForReading
+        drained.enter()
+        drained.enter()
 
         return try await withTaskCancellationHandler {
             try await withCheckedThrowingContinuation { (continuation: CheckedContinuation<EngineOutcome, Error>) in
                 state.setContinuation(continuation)
                 process.terminationHandler = { process in
-                    stdout.fileHandleForReading.readabilityHandler = nil
-                    stderr.fileHandleForReading.readabilityHandler = nil
-                    state.consume(stdout.fileHandleForReading.readDataToEndOfFile())
-                    errBuffer.append(stderr.fileHandleForReading.readDataToEndOfFile())
+                    // A child the tool left behind can hold a pipe open; don't wait on it forever.
+                    _ = drained.wait(timeout: .now() + 5)
                     state.finish(status: process.terminationStatus, stderr: errBuffer.string, timedOut: state.timedOut)
                 }
                 do {
@@ -73,6 +72,22 @@ public struct EngineRunner: Sendable {
                 } catch {
                     state.fail(YTAError(.toolMissing, "\(adapter.id.displayName) could not be started at \(executable.path)."))
                     return
+                }
+                DispatchQueue.global().async {
+                    while true {
+                        let chunk = outHandle.availableData
+                        if chunk.isEmpty { break }
+                        state.consume(chunk)
+                    }
+                    drained.leave()
+                }
+                DispatchQueue.global().async {
+                    while true {
+                        let chunk = errHandle.availableData
+                        if chunk.isEmpty { break }
+                        errBuffer.append(chunk)
+                    }
+                    drained.leave()
                 }
                 state.setProcess(process)
                 if let input = adapter.standardInput(for: request) {

@@ -69,6 +69,9 @@ public enum NodeRegistry {
     // MARK: Channel setup (section 7)
 
     public static let setup: [NodeType] = [
+        NodeType(id: "skills", title: "Skills", symbol: "puzzlepiece.extension", worker: .llm,
+                 summary: "Look for extra research skills. You choose Install or Skip for each.",
+                 outputs: ["research/skills.json"], approval: .always, checks: ["No silent install"]),
         NodeType(id: "niche", title: "Niche", symbol: "scope", worker: .llm,
                  summary: "Research a niche, or use the one you typed.",
                  outputs: ["profile/niche.md", "profile/audience.md", "research/competitors.json"],

@@ -125,6 +125,7 @@ public struct NodeRunExecutor: StageExecutor {
         }
         let recipe = try recipe
         if recipe.usesEngine {
+            try SkillLibrary.installShipped(into: folder)
             var prompt = """
             You are working on one YouTube channel. Its folder is your working directory. AGENTS.md there describes the channel. Read it first.
 

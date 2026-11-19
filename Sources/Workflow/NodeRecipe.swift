@@ -36,6 +36,8 @@ public enum NodeRecipes {
     public static func recipe(for node: Node) -> NodeRecipe? {
         if node.isCustom { return node.outputs.isEmpty ? nil : CustomRecipe() }
         switch node.type {
+        case "niche": return NicheRecipe()
+        case "skills": return SkillsRecipe()
         case "name": return NameRecipe()
         case "brand": return BrandRecipe()
         case "avatar": return AvatarRecipe()

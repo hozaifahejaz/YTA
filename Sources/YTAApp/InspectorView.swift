@@ -357,6 +357,10 @@ struct RunSection: View {
                     Spacer()
                     Button("Stop") { model.stop(node) }
                 }
+            } else if let skills = model.pendingSkills(for: node) {
+                SkillReviewView(node: node, review: skills)
+            } else if let niches = model.pendingNiches(for: node) {
+                NicheShortlistView(node: node, list: niches)
             } else if let names = model.pendingNames(for: node) {
                 NamePickerView(node: node, file: names)
             } else if let brand = model.pendingBrand(for: node) {
@@ -392,6 +396,9 @@ struct RunSection: View {
                         .font(Typography.callout)
                         .foregroundStyle(Palette.danger)
                 }
+                if node.type == "niche" {
+                    NicheBriefView(node: node)
+                } else {
                 HStack {
                     if let run, let usage = run.engine {
                         Text("Last run on \(usage.tool.displayName)")
@@ -403,6 +410,7 @@ struct RunSection: View {
                         .buttonStyle(.borderedProminent)
                         .tint(Palette.accent)
                         .disabled(!model.canRun(node))
+                }
                 }
             }
         } header: {

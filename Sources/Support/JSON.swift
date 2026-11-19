@@ -59,6 +59,11 @@ public enum JSONValue: Codable, Equatable, Sendable {
         if case .number(let value) = self { return Int(value) }
         return nil
     }
+
+    public var doubleValue: Double? {
+        if case .number(let value) = self { return value }
+        return nil
+    }
 }
 
 public enum JSONMerge {

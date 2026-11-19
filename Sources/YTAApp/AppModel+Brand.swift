@@ -6,7 +6,7 @@ import Support
 import Workflow
 
 extension AppModel {
-    private func waitingRun(_ node: Node, type: String) -> (RunRecord, ChannelFolder)? {
+    func waitingRun(_ node: Node, type: String) -> (RunRecord, ChannelFolder)? {
         _ = diskRevision
         guard node.type == type, let record = selectedChannel, let run = latestRun(for: node),
               run.stage == .awaitingApproval, !isRunning(node) else { return nil }

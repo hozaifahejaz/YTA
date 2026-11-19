@@ -3,6 +3,7 @@ import Support
 
 /// A tool or resource the health check looks for (section 6.4).
 public enum HealthItemID: String, Codable, Sendable, CaseIterable, Identifiable {
+    case homebrew
     case claude
     case codex
     case opencode
@@ -16,6 +17,7 @@ public enum HealthItemID: String, Codable, Sendable, CaseIterable, Identifiable 
 
     public var title: String {
         switch self {
+        case .homebrew: "Homebrew"
         case .claude: "Claude Code"
         case .codex: "Codex"
         case .opencode: "OpenCode"
@@ -29,6 +31,7 @@ public enum HealthItemID: String, Codable, Sendable, CaseIterable, Identifiable 
 
     public var purpose: String {
         switch self {
+        case .homebrew: "Installs and updates ffmpeg, Node.js, Whisper and OpenCode."
         case .claude: "Research, prompts, reviews. Runs on your subscription."
         case .codex: "Script writing with ChatGPT, and images."
         case .opencode: "An extra engine you can pick per step."
@@ -43,6 +46,7 @@ public enum HealthItemID: String, Codable, Sendable, CaseIterable, Identifiable 
     /// The command to find, for items that are command line tools.
     public var command: String? {
         switch self {
+        case .homebrew: "brew"
         case .claude: "claude"
         case .codex: "codex"
         case .opencode: "opencode"
@@ -56,6 +60,7 @@ public enum HealthItemID: String, Codable, Sendable, CaseIterable, Identifiable 
     /// How to fix it when missing. Shown as a command the owner can copy.
     public var fix: String? {
         switch self {
+        case .homebrew: "YTA opens Terminal to install it; it asks for your Mac password once"
         case .claude: "npm install -g @anthropic-ai/claude-code"
         case .codex: "npm install -g @openai/codex"
         case .opencode: "npm install -g opencode-ai"
@@ -146,6 +151,11 @@ public struct HealthCheck: Sendable {
             }
             // Remotion ships its own ffmpeg, so a missing system copy is only a warning.
             return HealthItem(id: id, status: .warning, detail: "Will use the copy that comes with Remotion")
+        case .homebrew:
+            guard let url = await HealthCheck.locateBrew(locate) else {
+                return HealthItem(id: id, status: .warning, detail: "Not installed. Install it first so YTA can install the rest.")
+            }
+            return HealthItem(id: id, status: .ok, path: url.path, version: await version(url))
         case .whisper:
             guard let url = await locate("whisper-cli") else {
                 return HealthItem(id: id, status: .warning, detail: "Not installed. The Mac's own speech recognition is used meanwhile.")
@@ -160,6 +170,14 @@ public struct HealthCheck: Sendable {
             }
             return HealthItem(id: id, status: .ok, path: url.path, version: await version(url))
         }
+    }
+
+    /// Homebrew's standard places, for Macs where it isn't on the shell's PATH yet.
+    public static let brewPaths = ["/opt/homebrew/bin/brew", "/usr/local/bin/brew"]
+
+    public static func locateBrew(_ locate: @Sendable (String) async -> URL?) async -> URL? {
+        if let url = await locate("brew") { return url }
+        return brewPaths.first { FileManager.default.isExecutableFile(atPath: $0) }.map { URL(fileURLWithPath: $0) }
     }
 
     public static func freeBytes(at url: URL) -> Int64? {

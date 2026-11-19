@@ -26,7 +26,7 @@ import Testing
 
     @Test func homebrewAndNpmReportTheNewestVersions() async throws {
         let shell: @Sendable (String, TimeInterval) async throws -> ProcessResult = { command, _ in
-            if command.hasPrefix("brew outdated") {
+            if command.contains("brew outdated") {
                 return ProcessResult(status: 0, stdout: #"{"formulae":[{"name":"ffmpeg","installed_versions":["9.0.2"],"current_version":"9.0.3"}],"casks":[]}"#, stderr: "")
             }
             return ProcessResult(status: 0, stdout: "", stderr: "")
@@ -50,5 +50,17 @@ import Testing
         #expect(get(.remotion).updateAvailable && get(.remotion).method == .appManaged)
         #expect(get(.node).latest == "24.11.1" && get(.node).updateCommand == nil)
         #expect(get(.whisper).installed == nil && get(.whisper).installCommand == "brew install whisper-cpp")
+    }
+}
+
+@Suite struct HomebrewTests {
+    @Test func homebrewComesFirstAndIsFoundWhereItLives() async {
+        #expect(HealthItemID.allCases.first == .homebrew)
+        #expect(ToolMaintenance.homebrewInstall.contains("Homebrew/install/HEAD/install.sh"))
+        #expect(ToolMaintenance.brewEnvironment.contains("/opt/homebrew/bin/brew shellenv"))
+        let none = await HealthCheck.locateBrew { _ in nil }
+        #expect(none == nil || HealthCheck.brewPaths.contains(none!.path))
+        let found = await HealthCheck.locateBrew { _ in URL(fileURLWithPath: "/somewhere/brew") }
+        #expect(found?.path == "/somewhere/brew")
     }
 }

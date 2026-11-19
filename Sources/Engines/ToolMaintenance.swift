@@ -128,7 +128,7 @@ public struct ToolMaintenance: Sendable {
         case .codex: hasNpm ? "npm install -g @openai/codex" : (hasBrew ? "brew install codex" : nil)
         case .opencode: hasBrew ? "brew install opencode" : (hasNpm ? "npm install -g opencode-ai" : nil)
         case .node, .ffmpeg, .whisper: hasBrew ? brewNames[id].map { "brew install \($0)" } : nil
-        case .remotion, .disk: nil
+        case .remotion, .disk, .homebrew: nil
         }
     }
 
@@ -151,17 +151,18 @@ public struct ToolMaintenance: Sendable {
 
     /// Newest versions from Homebrew (for Homebrew installs) or the npm registry.
     public func check(_ tools: ToolsFile, remotionVersion: String?) async -> [ToolStatus] {
-        let hasBrew = ((try? await shell("command -v brew", 15))?.succeeded) ?? false
+        var hasBrew = tools.items.first { $0.id == .homebrew }?.path != nil
+        if !hasBrew { hasBrew = ((try? await shell("command -v brew", 15))?.succeeded) ?? false }
         let hasNpm = ((try? await shell("command -v npm", 15))?.succeeded) ?? false
         var outdated: [String: String] = [:]
         if hasBrew {
-            _ = try? await shell("brew update --quiet", 300)
-            if let result = try? await shell("brew outdated --json=v2", 120), result.succeeded {
+            _ = try? await shell(Self.brewEnvironment + "brew update --quiet", 300)
+            if let result = try? await shell(Self.brewEnvironment + "brew outdated --json=v2", 120), result.succeeded {
                 outdated = Self.brewOutdated(result.stdout)
             }
         }
         var statuses: [ToolStatus] = []
-        for id in HealthItemID.allCases where id != .disk {
+        for id in HealthItemID.allCases where id != .disk && id != .homebrew {
             let item = tools.items.first { $0.id == id }
             let present = item?.path != nil && item?.status != .missing
             let method = Self.method(for: id, realPath: item?.path.map(realPath))
@@ -213,9 +214,15 @@ public struct ToolMaintenance: Sendable {
         return lts?["version"]?.stringValue.map { $0.hasPrefix("v") ? String($0.dropFirst()) : $0 }
     }
 
+    /// Puts Homebrew on PATH even when the shell profile doesn't, so `brew` and its tools are found.
+    static let brewEnvironment = HealthCheck.brewPaths.map { "[ -x \($0) ] && eval \"$(\($0) shellenv)\"; " }.joined()
+
+    /// Homebrew's own installer needs the owner's password, so it runs in Terminal where they can type it.
+    public static let homebrewInstall = #"/bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)""#
+
     /// Runs an install or update command through the login shell. Never interactive.
     public func run(_ command: String) async throws -> ProcessResult {
-        let result = try await shell("export HOMEBREW_NO_AUTO_UPDATE=1 NONINTERACTIVE=1 CI=1; \(command) < /dev/null", 1800)
+        let result = try await shell("\(Self.brewEnvironment)export HOMEBREW_NO_AUTO_UPDATE=1 NONINTERACTIVE=1 CI=1; \(command) < /dev/null", 1800)
         guard result.succeeded else {
             throw YTAError(.toolMissing, "\"\(command)\" did not finish.", suggestion: String((result.stderr.isEmpty ? result.stdout : result.stderr).suffix(400)))
         }

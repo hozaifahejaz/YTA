@@ -109,7 +109,7 @@ struct HealthRow: View {
         guard id != .disk else { return false }
         if item?.status == .missing { return true }
         // Optional tools that are absent show as warnings without a path.
-        return (id == .ffmpeg || id == .whisper) && item?.path == nil && item?.status == .warning
+        return (id == .ffmpeg || id == .whisper || id == .homebrew) && item?.path == nil && item?.status == .warning
             || (id == .remotion && item?.status == .warning)
     }
 

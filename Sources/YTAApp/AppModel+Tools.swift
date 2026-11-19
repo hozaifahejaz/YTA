@@ -72,6 +72,15 @@ extension AppModel {
     }
 
     func installTool(_ id: HealthItemID) async {
+        if id == .homebrew {
+            openHomebrewInstaller()
+            return
+        }
+        let needsBrew: Set<HealthItemID> = [.node, .ffmpeg, .whisper]
+        if needsBrew.contains(id), health?.items.first(where: { $0.id == .homebrew })?.path == nil {
+            note("Install Homebrew first (the first item in the health check). YTA then installs \(id.title) with it.", isError: true)
+            return
+        }
         if id == .remotion {
             guard let project = remotionProject else {
                 note("Remotion needs Node.js first.", isError: true)
@@ -96,6 +105,26 @@ extension AppModel {
             if id == .whisper { await ensureWhisperModel() }
             await checkToolUpdates()
             note("\(id.title) is installed")
+        } catch {
+            report(error)
+        }
+    }
+
+    /// Homebrew's installer asks for the Mac's password, so it runs in a Terminal window the owner can type in.
+    func openHomebrewInstaller() {
+        let script = FileManager.default.temporaryDirectory.appendingPathComponent("Install Homebrew for YTA.command")
+        let text = """
+        #!/bin/bash
+        echo "Installing Homebrew for YTA. Type your Mac password when asked (nothing shows while you type)."
+        \(ToolMaintenance.homebrewInstall)
+        echo
+        echo "Done. Go back to YTA and click Check Again."
+        """
+        do {
+            try text.write(to: script, atomically: true, encoding: .utf8)
+            try FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: script.path)
+            NSWorkspace.shared.open(script)
+            note("Terminal is installing Homebrew. Click Check Again in the health check when it finishes.")
         } catch {
             report(error)
         }

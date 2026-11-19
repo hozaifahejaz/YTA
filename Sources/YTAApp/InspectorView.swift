@@ -30,11 +30,11 @@ struct NodeInspector: View {
     @Environment(AppModel.self) private var model
     let node: Node
 
-    @State private var draft: Node
+    @StateObject private var draft: LocalState<Node>
 
     init(node: Node) {
         self.node = node
-        _draft = State(initialValue: node)
+        _draft = StateObject(wrappedValue: LocalState(node))
     }
 
     private var type: NodeType? { node.nodeType }
@@ -46,7 +46,7 @@ struct NodeInspector: View {
                     SymbolTile(type?.symbol ?? NodeType.custom.symbol, size: 32)
                     VStack(alignment: .leading, spacing: 2) {
                         if node.isCustom {
-                            TextField("Title", text: $draft.title)
+                            TextField("Title", text: $draft.value.title)
                                 .textFieldStyle(.plain)
                                 .font(Typography.title)
                                 .onSubmit(save)
@@ -71,7 +71,7 @@ struct NodeInspector: View {
                 LabeledContent("Done by", value: workerText)
             }
 
-            if draft.engine != nil {
+            if draft.value.engine != nil {
                 Section("Engine") {
                     Picker("Tool", selection: engineTool) {
                         ForEach(EngineID.allCases) { Text($0.displayName).tag($0) }
@@ -96,7 +96,7 @@ struct NodeInspector: View {
             }
 
             Section("Approval") {
-                Picker("Ask me to approve", selection: $draft.approval) {
+                Picker("Ask me to approve", selection: $draft.value.approval) {
                     Text("Always").tag(ApprovalRule.always)
                     Text("Follow the channel's dial").tag(ApprovalRule.byDial)
                     Text("Never").tag(ApprovalRule.never)
@@ -147,12 +147,12 @@ struct NodeInspector: View {
         }
         .formStyle(.grouped)
         .scrollContentBackground(.hidden)
-        .onChange(of: draft) { _, _ in save() }
+        .onChange(of: draft.value) { _, _ in save() }
     }
 
     private func save() {
-        guard draft != node else { return }
-        model.updateNode(draft)
+        guard draft.value != node else { return }
+        model.updateNode(draft.value)
     }
 
     private var workerText: String {
@@ -164,29 +164,29 @@ struct NodeInspector: View {
     }
 
     private var engineTool: Binding<EngineID> {
-        Binding(get: { draft.engine?.tool ?? .claude }, set: { draft.engine?.tool = $0 })
+        Binding(get: { draft.value.engine?.tool ?? .claude }, set: { draft.value.engine?.tool = $0 })
     }
 
     private var engineModel: Binding<String> {
-        Binding(get: { draft.engine?.model ?? "" }, set: { draft.engine?.model = $0.isEmpty ? nil : $0 })
+        Binding(get: { draft.value.engine?.model ?? "" }, set: { draft.value.engine?.model = $0.isEmpty ? nil : $0 })
     }
 
     private var engineEffort: Binding<Effort?> {
-        Binding(get: { draft.engine?.effort }, set: { draft.engine?.effort = $0 })
+        Binding(get: { draft.value.engine?.effort }, set: { draft.value.engine?.effort = $0 })
     }
 
     private var promptBinding: Binding<String> {
-        Binding(get: { draft.promptTemplate ?? "" }, set: { draft.promptTemplate = $0.isEmpty ? nil : $0 })
+        Binding(get: { draft.value.promptTemplate ?? "" }, set: { draft.value.promptTemplate = $0.isEmpty ? nil : $0 })
     }
 
     private var outputBinding: Binding<String> {
-        Binding(get: { draft.outputs.first ?? "" }, set: { draft.outputs = $0.isEmpty ? [] : [$0.trimmingCharacters(in: .whitespaces)] })
+        Binding(get: { draft.value.outputs.first ?? "" }, set: { draft.value.outputs = $0.isEmpty ? [] : [$0.trimmingCharacters(in: .whitespaces)] })
     }
 
     private var inputsBinding: Binding<String> {
         Binding(
-            get: { draft.inputs.joined(separator: ", ") },
-            set: { draft.inputs = $0.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty } }
+            get: { draft.value.inputs.joined(separator: ", ") },
+            set: { draft.value.inputs = $0.split(separator: ",").map { $0.trimmingCharacters(in: .whitespaces) }.filter { !$0.isEmpty } }
         )
     }
 }
@@ -246,17 +246,17 @@ struct ChannelInspector: View {
     @Environment(AppModel.self) private var model
     let channel: ChannelRecord
 
-    @State private var name: String
-    @State private var group: String
-    @State private var country: String
-    @State private var language: String
+    @StateObject private var name: LocalState<String>
+    @StateObject private var group: LocalState<String>
+    @StateObject private var country: LocalState<String>
+    @StateObject private var language: LocalState<String>
 
     init(channel: ChannelRecord) {
         self.channel = channel
-        _name = State(initialValue: channel.manifest.name)
-        _group = State(initialValue: channel.manifest.group ?? "")
-        _country = State(initialValue: channel.manifest.country ?? "")
-        _language = State(initialValue: channel.manifest.language)
+        _name = StateObject(wrappedValue: LocalState(channel.manifest.name))
+        _group = StateObject(wrappedValue: LocalState(channel.manifest.group ?? ""))
+        _country = StateObject(wrappedValue: LocalState(channel.manifest.country ?? ""))
+        _language = StateObject(wrappedValue: LocalState(channel.manifest.language))
     }
 
     var body: some View {
@@ -264,17 +264,17 @@ struct ChannelInspector: View {
         let sources = channel.folder.sources()
         Form {
             Section("Channel") {
-                TextField("Name", text: $name)
-                    .onSubmit { model.updateManifest { $0.name = name } }
-                TextField("Group", text: $group, prompt: Text("None"))
-                    .onSubmit { model.updateManifest { $0.group = group.isEmpty ? nil : group } }
+                TextField("Name", text: $name.value)
+                    .onSubmit { model.updateManifest { $0.name = name.value } }
+                TextField("Group", text: $group.value, prompt: Text("None"))
+                    .onSubmit { model.updateManifest { $0.group = group.value.isEmpty ? nil : group.value } }
                 Picker("Format", selection: Binding(get: { channel.manifest.format }, set: { value in model.updateManifest { $0.format = value } })) {
                     ForEach(ChannelFormat.allCases) { Text($0.title).tag($0) }
                 }
-                TextField("Language", text: $language)
-                    .onSubmit { model.updateManifest { $0.language = language } }
-                TextField("Main country", text: $country, prompt: Text("Any"))
-                    .onSubmit { model.updateManifest { $0.country = country.isEmpty ? nil : country } }
+                TextField("Language", text: $language.value)
+                    .onSubmit { model.updateManifest { $0.language = language.value } }
+                TextField("Main country", text: $country.value, prompt: Text("Any"))
+                    .onSubmit { model.updateManifest { $0.country = country.value.isEmpty ? nil : country.value } }
             }
 
             Section {

@@ -120,7 +120,7 @@ public struct Monogram: View {
 /// A command the owner can copy, with a copy button.
 public struct CopyableCommand: View {
     let command: String
-    @State private var copied = false
+    @StateObject private var copied = LocalState(false)
 
     public init(_ command: String) {
         self.command = command
@@ -138,13 +138,13 @@ public struct CopyableCommand: View {
             Button {
                 NSPasteboard.general.clearContents()
                 NSPasteboard.general.setString(command, forType: .string)
-                copied = true
+                copied.value = true
             } label: {
-                Image(systemName: copied ? "checkmark" : "doc.on.doc")
+                Image(systemName: copied.value ? "checkmark" : "doc.on.doc")
             }
             .buttonStyle(.borderless)
             .help("Copy")
-            .accessibilityLabel(copied ? "Copied" : "Copy command")
+            .accessibilityLabel(copied.value ? "Copied" : "Copy command")
         }
         .padding(.horizontal, Spacing.s)
         .padding(.vertical, Spacing.xs)

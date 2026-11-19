@@ -15,13 +15,7 @@ struct NewChannelSheet: View {
     @Environment(\.dismiss) private var dismiss
     let mode: Mode
 
-    @State private var nicheChoice: NicheChoice = .have
-    @State private var workingName = ""
-    @State private var niche = ""
-    @State private var link = ""
-    @State private var format: ChannelFormat = .longForm
-    @State private var language = "English"
-    @State private var country = ""
+    @StateObject private var form = NewChannelForm()
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
@@ -39,14 +33,14 @@ struct NewChannelSheet: View {
             Form {
                 if mode == .new {
                     Section {
-                        Picker("Niche", selection: $nicheChoice) {
+                        Picker("Niche", selection: $form.nicheChoice) {
                             Text("I have a niche").tag(NicheChoice.have)
                             Text("Find me a niche").tag(NicheChoice.find)
                         }
                         .pickerStyle(.segmented)
                         .labelsHidden()
-                        if nicheChoice == .have {
-                            TextField("Niche", text: $niche, prompt: Text("Unsolved maritime mysteries"), axis: .vertical)
+                        if form.nicheChoice == .have {
+                            TextField("Niche", text: $form.niche, prompt: Text("Unsolved maritime mysteries"), axis: .vertical)
                                 .lineLimit(2...4)
                         } else {
                             Text("The Niche step researches candidates with real YouTube numbers and gives you a shortlist.")
@@ -55,20 +49,20 @@ struct NewChannelSheet: View {
                         }
                     }
                     Section {
-                        TextField("Working name", text: $workingName, prompt: Text("Untitled channel"))
+                        TextField("Working name", text: $form.workingName, prompt: Text("Untitled channel"))
                     }
                 } else {
                     Section {
-                        TextField("Channel", text: $link, prompt: Text("@handle or a channel or video link"))
-                        TextField("Working name", text: $workingName, prompt: Text("Used for the folder until the snapshot runs"))
+                        TextField("Channel", text: $form.link, prompt: Text("@handle or a channel or video link"))
+                        TextField("Working name", text: $form.workingName, prompt: Text("Used for the folder until the snapshot runs"))
                     }
                 }
                 Section {
-                    Picker("Format", selection: $format) {
+                    Picker("Format", selection: $form.format) {
                         ForEach(ChannelFormat.allCases) { Text($0.title).tag($0) }
                     }
-                    TextField("Language", text: $language)
-                    TextField("Main country", text: $country, prompt: Text("Any, aimed at high ad rates"))
+                    TextField("Language", text: $form.language)
+                    TextField("Main country", text: $form.country, prompt: Text("Any, aimed at high ad rates"))
                 }
             }
             .formStyle(.grouped)
@@ -92,14 +86,14 @@ struct NewChannelSheet: View {
 
     private var canCreate: Bool {
         switch mode {
-        case .new: nicheChoice == .find || !niche.trimmingCharacters(in: .whitespaces).isEmpty
-        case .import: !link.trimmingCharacters(in: .whitespaces).isEmpty
+        case .new: form.nicheChoice == .find || !form.niche.trimmingCharacters(in: .whitespaces).isEmpty
+        case .import: !form.link.trimmingCharacters(in: .whitespaces).isEmpty
         }
     }
 
     private func create() {
-        let trimmedName = workingName.trimmingCharacters(in: .whitespaces)
-        let trimmedLink = link.trimmingCharacters(in: .whitespaces)
+        let trimmedName = form.workingName.trimmingCharacters(in: .whitespaces)
+        let trimmedLink = form.link.trimmingCharacters(in: .whitespaces)
         let name: String
         if !trimmedName.isEmpty {
             name = trimmedName
@@ -110,10 +104,10 @@ struct NewChannelSheet: View {
         }
         model.createChannel(NewChannelRequest(
             workingName: name,
-            niche: mode == .new && nicheChoice == .have ? niche.trimmingCharacters(in: .whitespacesAndNewlines) : nil,
+            niche: mode == .new && form.nicheChoice == .have ? form.niche.trimmingCharacters(in: .whitespacesAndNewlines) : nil,
             format: format,
-            language: language.trimmingCharacters(in: .whitespaces).isEmpty ? "English" : language,
-            country: country.trimmingCharacters(in: .whitespaces).isEmpty ? nil : country,
+            language: form.language.trimmingCharacters(in: .whitespaces).isEmpty ? "English" : form.language,
+            country: form.country.trimmingCharacters(in: .whitespaces).isEmpty ? nil : form.country,
             origin: mode == .new ? .new : .imported,
             importLink: mode == .import ? trimmedLink : nil,
             automation: model.settings.automationDefault
@@ -129,4 +123,16 @@ struct NewChannelSheet: View {
         }
         return "Imported channel"
     }
+}
+
+/// The sheet's fields. Kept in an object because `@State` needs Xcode (see LocalState).
+@MainActor
+final class NewChannelForm: ObservableObject {
+    @Published var nicheChoice: NewChannelSheet.NicheChoice = .have
+    @Published var workingName = ""
+    @Published var niche = ""
+    @Published var link = ""
+    @Published var format: ChannelFormat = .longForm
+    @Published var language = "English"
+    @Published var country = ""
 }

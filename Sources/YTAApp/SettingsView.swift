@@ -86,14 +86,14 @@ struct KeyRow: View {
     @Environment(AppModel.self) private var model
     let key: SecretKey
 
-    @State private var value = ""
-    @State private var saved = false
+    @StateObject private var value = LocalState("")
+    @StateObject private var saved = LocalState(false)
 
     var body: some View {
         VStack(alignment: .leading, spacing: Spacing.xs) {
             HStack {
                 Text(key.title).font(Typography.headline)
-                if saved {
+                if saved.value {
                     Pill("Saved", foreground: Palette.success, background: Palette.successSoft)
                 }
                 Spacer()
@@ -104,16 +104,16 @@ struct KeyRow: View {
                 .font(Typography.callout)
                 .foregroundStyle(Palette.textSecondary)
             HStack {
-                SecureField(saved ? "Replace the saved key" : "Paste the key", text: $value)
+                SecureField(saved.value ? "Replace the saved key" : "Paste the key", text: $value.value)
                     .textFieldStyle(.roundedBorder)
                     .onSubmit(save)
                 Button("Save", action: save)
-                    .disabled(value.trimmingCharacters(in: .whitespaces).isEmpty)
-                if saved {
+                    .disabled(value.value.trimmingCharacters(in: .whitespaces).isEmpty)
+                if saved.value {
                     Button("Remove", role: .destructive) {
                         do {
                             try model.secrets.delete(key)
-                            saved = false
+                            saved.value = false
                         } catch {
                             model.report(error)
                         }
@@ -122,16 +122,16 @@ struct KeyRow: View {
             }
         }
         .padding(.vertical, Spacing.xxs)
-        .onAppear { saved = model.secrets.has(key) }
+        .onAppear { saved.value = model.secrets.has(key) }
     }
 
     private func save() {
-        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        let trimmed = value.value.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
         do {
             try model.secrets.save(trimmed, for: key)
-            value = ""
-            saved = true
+            value.value = ""
+            saved.value = true
         } catch {
             model.report(error)
         }
@@ -140,7 +140,7 @@ struct KeyRow: View {
 
 struct StorageSettings: View {
     @Environment(AppModel.self) private var model
-    @State private var usage: [(String, Int64)] = []
+    @StateObject private var usage = LocalState<[(String, Int64)]>([])
 
     var body: some View {
         Form {
@@ -162,10 +162,10 @@ struct StorageSettings: View {
                 Text("Moving storage does not move existing channels. Move the folder in Finder first, then choose its new place here.")
             }
             Section("Space used") {
-                if usage.isEmpty {
+                if usage.value.isEmpty {
                     Text("No channels yet").foregroundStyle(Palette.textTertiary)
                 }
-                ForEach(usage, id: \.0) { name, bytes in
+                ForEach(usage.value, id: \.0) { name, bytes in
                     LabeledContent(name, value: ByteCountFormatter.string(fromByteCount: bytes, countStyle: .file))
                 }
             }
@@ -201,7 +201,7 @@ struct StorageSettings: View {
 
     private func measure() async {
         let channels = model.channels.map { ($0.manifest.name, $0.folder.root) }
-        usage = await Task.detached {
+        usage.value = await Task.detached {
             channels.map { name, root in (name, Self.size(of: root)) }
         }.value
     }

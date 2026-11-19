@@ -5,7 +5,8 @@ import SwiftUI
 @main
 struct YTAApp: App {
     @NSApplicationDelegateAdaptor(AppDelegate.self) private var delegate
-    @State private var model = AppModel()
+    /// Created once with the app. Not `@State`, which needs Xcode (see LocalState).
+    private let model = AppModel()
 
     var body: some Scene {
         Window("YTA", id: "main") {

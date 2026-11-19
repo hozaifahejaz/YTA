@@ -69,7 +69,7 @@ struct NodeCardView: View {
     let onSelect: () -> Void
     let onAction: (NodeAction) -> Void
 
-    @State private var hovering = false
+    @StateObject private var hovering = LocalState(false)
 
     private var type: NodeType? { node.nodeType }
     private var locked: Bool { type?.lockedReason != nil }
@@ -109,17 +109,17 @@ struct NodeCardView: View {
                     Text("⌘\(number)")
                         .font(Typography.caption)
                         .foregroundStyle(Palette.textTertiary)
-                        .opacity(number <= 9 && hovering ? 1 : 0)
+                        .opacity(number <= 9 && hovering.value ? 1 : 0)
                         .accessibilityHidden(true)
                 }
             }
             .frame(width: 176, height: 132, alignment: .topLeading)
             .card(padding: Spacing.s, highlighted: highlight)
-            .shadow(color: .black.opacity(isSelected || hovering ? 0.06 : 0.02), radius: isSelected ? 8 : 4, y: 2)
+            .shadow(color: .black.opacity(isSelected || hovering.value ? 0.06 : 0.02), radius: isSelected ? 8 : 4, y: 2)
             .contentShape(RoundedRectangle(cornerRadius: Radius.l))
         }
         .buttonStyle(.plain)
-        .onHover { hovering = $0 }
+        .onHover { hovering.value = $0 }
         .contextMenu {
             if node.engine != nil {
                 Button("Edit prompt") { onAction(.editPrompt) }
@@ -162,7 +162,7 @@ struct NodeCardView: View {
 struct Connector: View {
     let isComplete: Bool
     let onInsert: () -> Void
-    @State private var hovering = false
+    @StateObject private var hovering = LocalState(false)
 
     var body: some View {
         ZStack {
@@ -178,13 +178,13 @@ struct Connector: View {
                     .overlay(Circle().strokeBorder(Palette.borderStrong))
             }
             .buttonStyle(.plain)
-            .opacity(hovering ? 1 : 0.0001)
+            .opacity(hovering.value ? 1 : 0.0001)
             .help("Insert a step here")
             .accessibilityLabel("Insert a step here")
         }
         .frame(width: 40, height: 132)
         .contentShape(Rectangle())
-        .onHover { hovering = $0 }
+        .onHover { hovering.value = $0 }
     }
 }
 

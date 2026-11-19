@@ -167,4 +167,25 @@ import YouTubeData
         #expect(folder.exists("videos/\(video.folderName)/\(video.folderName).mp4"))
         #expect(VideoStore(folder: folder).video(video.id)?.status == .done)
     }
+
+    @Test func creditsLinkAndPublishingUpdateTheKitAndStartFollowUp() async throws {
+        let (folder, video, context) = try prepared([claudeResult(Self.kitAnswer(reuse: true))])
+        try kitReady(folder, video, qcPassed: true)
+        _ = try await pipeline.run(video.row.nodes.first { $0.type == "kit" }!, context, folder: folder)
+
+        #expect(throws: YTAError.self) { try Publishing.setCreditsLink("not a link", videoID: video.id, folder: folder) }
+        try Publishing.setCreditsLink("https://docs.google.com/document/d/abc/edit", videoID: video.id, folder: folder)
+        var kit = try folder.readJSON(KitFile.self, video.path(KitFile.file))
+        #expect(kit.description.contains("https://docs.google.com/document/d/abc/edit"))
+        #expect(!kit.description.contains(KitRecipe.creditsPlaceholder))
+        try Publishing.setCreditsLink("https://docs.google.com/document/d/xyz/edit", videoID: video.id, folder: folder)
+        kit = try folder.readJSON(KitFile.self, video.path(KitFile.file))
+        #expect(kit.description.contains("/xyz/") && !kit.description.contains("/abc/"))
+
+        let published = Date(timeIntervalSince1970: 1_800_000_000)
+        try Publishing.markPublished("https://youtu.be/dQw4w9WgXcQ", videoID: video.id, folder: folder, at: published)
+        let saved = try #require(VideoStore(folder: folder).video(video.id))
+        #expect(saved.status == .published)
+        #expect(PerformanceFile.load(folder).videos.first?.youtubeID == "dQw4w9WgXcQ")
+    }
 }

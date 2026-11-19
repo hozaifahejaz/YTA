@@ -111,6 +111,7 @@ final class AppModel {
         resumeInterruptedRuns()
         if !settings.finishedFirstRun { showHealthCheck = true }
         Task { await runHealthCheck() }
+        Task { await followUpPublishedVideos() }
     }
 
     func runHealthCheck() async {

@@ -424,6 +424,10 @@ struct RunSection: View {
                     CutReviewView(node: node)
                 } else if node.type == "render" {
                     RenderControls(node: node)
+                } else if node.type == "thumbnails" {
+                    ThumbnailsView(node: node)
+                } else if node.type == "kit" {
+                    KitResultView(node: node)
                 } else {
                 HStack {
                     if let run, let usage = run.engine {

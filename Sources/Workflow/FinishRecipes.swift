@@ -497,3 +497,63 @@ public struct KitRecipe: NodeRecipe {
         }
     }
 }
+
+// MARK: After the kit: credits link, publishing, follow-up
+
+public enum Publishing {
+    /// Saves the credits link, puts it into the kit's description and rewrites YouTube Kit.docx.
+    public static func setCreditsLink(_ link: String, videoID: String, folder: ChannelFolder) throws {
+        let trimmed = link.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard let url = URL(string: trimmed), url.scheme == "https", url.host != nil else {
+            throw YTAError(.checkFailed, "That doesn't look like a sharing link.", suggestion: "Paste the full https:// link from Google Docs.")
+        }
+        let store = VideoStore(folder: folder)
+        try store.update(videoID) { $0.creditsLink = trimmed }
+        guard let video = store.video(videoID), var kit = try? folder.readJSON(KitFile.self, video.path(KitFile.file)) else { return }
+        if let old = kit.creditsLink, kit.description.contains(old) {
+            kit.description = kit.description.replacingOccurrences(of: old, with: trimmed)
+        } else {
+            kit.description = kit.description.replacingOccurrences(of: KitRecipe.creditsPlaceholder, with: trimmed)
+        }
+        kit.creditsLink = trimmed
+        kit.checklist = KitRecipe.checklist(aiLabel: kit.aiLabel, creditsPending: false)
+        if let index = kit.gate.firstIndex(where: { $0.name == "Credits link" }) { kit.gate[index].detail = "Linked." }
+        try folder.writeJSON(kit, to: video.path(KitFile.file), source: "Credits link")
+        try folder.write(KitRecipe.document(kit, title: video.title).data,
+                         to: "\(ChannelLayout.videos)/\(video.folderName)/YouTube Kit.docx", source: "Credits link")
+    }
+
+    /// Marks a video published from its YouTube link and starts following its numbers.
+    public static func markPublished(_ link: String, videoID: String, folder: ChannelFolder, at date: Date = Date()) throws {
+        guard let youtubeID = YouTubeService.videoID(fromLink: link) else {
+            throw YTAError(.checkFailed, "That isn't a YouTube video link.", suggestion: "Paste the link from the video's page or YouTube Studio's share button.")
+        }
+        let store = VideoStore(folder: folder)
+        try store.update(videoID) { video in
+            video.publishedURL = "https://www.youtube.com/watch?v=\(youtubeID)"
+            video.publishedAt = date
+            video.status = .published
+        }
+        guard let video = store.video(videoID) else { return }
+        var performance = PerformanceFile.load(folder)
+        performance.videos.removeAll { $0.videoID == videoID }
+        performance.videos.append(.init(videoID: videoID, youtubeID: youtubeID, title: video.title, topic: video.topic,
+                                        publishedAt: date, readings: []))
+        try folder.writeJSON(performance, to: PerformanceFile.path, source: "Published")
+    }
+
+    /// Reads the public numbers of every video whose next checkpoint has passed. Returns how many were read.
+    @discardableResult
+    public static func followUp(folder: ChannelFolder, youtube: YouTubeService, at date: Date = Date()) async -> Int {
+        var performance = PerformanceFile.load(folder)
+        var read = 0
+        for entry in performance.due(at: date) {
+            guard let stats = try? await youtube.stats(videoID: entry.youtubeID),
+                  let index = performance.videos.firstIndex(where: { $0.videoID == entry.videoID }) else { continue }
+            performance.videos[index].readings.append(stats)
+            read += 1
+        }
+        if read > 0 { try? folder.writeJSON(performance, to: PerformanceFile.path, source: "Follow-up") }
+        return read
+    }
+}

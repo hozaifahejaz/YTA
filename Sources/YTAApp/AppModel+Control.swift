@@ -52,6 +52,9 @@ extension AppModel {
             controlServer = server
             controlStatus = "Listening on 127.0.0.1:\(server.port) with \(registry.all.count) tools"
             Log.shared.info("MCP server: \(controlStatus)")
+            if !settings.control.addedToClaudeCode, health?.items.first(where: { $0.id == .claude })?.path != nil {
+                Task { await addToClaudeCode(quietly: true) }
+            }
         } catch {
             controlStatus = (error as? YTAError)?.message ?? error.localizedDescription
             note("The MCP server did not start: \(controlStatus)", isError: true)
@@ -91,7 +94,7 @@ extension AppModel {
     }
 
     /// Runs `claude mcp add` for the owner. Only on their click.
-    func addToClaudeCode() async {
+    func addToClaudeCode(quietly: Bool = false) async {
         guard let path = health?.items.first(where: { $0.id == .claude })?.path else {
             report(YTAError(.toolMissing, "Claude Code was not found.", suggestion: "Install it from the health check, or copy the setup command."))
             return
@@ -105,12 +108,14 @@ extension AppModel {
                 "--header", "Authorization: Bearer \(token)",
             ], timeout: 30)
             if result.succeeded {
+                if !settings.control.addedToClaudeCode { updateSettings { $0.control.addedToClaudeCode = true } }
                 note("Added YTA to Claude Code. New Claude Code sessions can control YTA.")
             } else {
-                report(YTAError(.checkFailed, "Claude Code did not add YTA: \(Redactor.shared.redact(result.stderr + result.stdout))"))
+                let error = YTAError(.checkFailed, "Claude Code did not add YTA: \(Redactor.shared.redact(result.stderr + result.stdout))")
+                if quietly { Log.shared.warning(error.message) } else { report(error) }
             }
         } catch {
-            report(error)
+            if quietly { Log.shared.warning("Adding YTA to Claude Code failed: \(error)") } else { report(error) }
         }
     }
 

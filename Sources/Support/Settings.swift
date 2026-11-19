@@ -106,12 +106,24 @@ public struct CostCaps: Codable, Sendable, Equatable {
 public struct ControlSettings: Codable, Sendable, Equatable {
     public var enabled: Bool
     public var port: Int
+    /// YTA added itself to Claude Code once, so the owner has nothing to set up.
+    public var addedToClaudeCode: Bool
 
     public static let defaultPort = 47821
 
-    public init(enabled: Bool = true, port: Int = ControlSettings.defaultPort) {
+    public init(enabled: Bool = true, port: Int = ControlSettings.defaultPort, addedToClaudeCode: Bool = false) {
         self.enabled = enabled
         self.port = port
+        self.addedToClaudeCode = addedToClaudeCode
+    }
+
+    private enum CodingKeys: String, CodingKey { case enabled, port, addedToClaudeCode }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        enabled = try c.decodeIfPresent(Bool.self, forKey: .enabled) ?? true
+        port = try c.decodeIfPresent(Int.self, forKey: .port) ?? Self.defaultPort
+        addedToClaudeCode = try c.decodeIfPresent(Bool.self, forKey: .addedToClaudeCode) ?? false
     }
 }
 

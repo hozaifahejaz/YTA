@@ -154,7 +154,7 @@ final class AppModel {
         change(&copy)
         guard copy != settings else { return }
         let storageMoved = copy.storagePath != settings.storagePath
-        let controlChanged = copy.control != settings.control
+        let controlChanged = copy.control.enabled != settings.control.enabled || copy.control.port != settings.control.port
         settings = copy
         do {
             try settingsStore.save(copy)

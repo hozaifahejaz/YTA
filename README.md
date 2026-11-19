@@ -22,7 +22,7 @@ open build/YTA.app
 
 `Scripts/build-app.sh --install` also copies the app to `~/Applications`. The app is signed ad hoc, which is enough to run it on the Mac that built it.
 
-For quick work on the code, `swift run YTA` starts the app without making a bundle, and `swift test` runs the tests.
+For quick work on the code, `swift run YTA` starts the app without making a bundle, and `Scripts/test.sh` runs the tests (it passes the Command Line Tools' testing plugin, which `swift test` alone can miss).
 
 `swift run yta-engine-check` runs one small step through each installed engine (Claude Code, Codex, OpenCode) in a throwaway channel and reports the result.
 

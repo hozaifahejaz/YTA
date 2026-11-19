@@ -128,8 +128,10 @@ public enum PageData {
         var videos: Int?
         for string in strings(in: data) {
             let lowered = string.lowercased()
-            if subscribers == nil, lowered.hasSuffix(" subscribers") || lowered.hasSuffix(" subscriber") {
-                subscribers = Parse.count(string)
+            if lowered.hasSuffix(" subscribers") || lowered.hasSuffix(" subscriber") {
+                // The header holds both "47M subscribers" and a spoken label; other text can
+                // mention subscribers too. The channel's own count is the largest.
+                if let count = Parse.count(string) { subscribers = max(subscribers ?? 0, count) }
             } else if videos == nil, lowered.hasSuffix(" videos") || lowered.hasSuffix(" video"),
                       Parse.count(string) != nil, string.split(separator: " ").count == 2 {
                 videos = Parse.count(string)

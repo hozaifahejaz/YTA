@@ -96,9 +96,19 @@ enum Parse {
     static func count(_ text: String) -> Int? {
         let lowered = text.lowercased()
         if lowered.hasPrefix("no ") { return 0 }
-        guard let token = lowered.split(separator: " ").first else { return nil }
+        let tokens = lowered.split(separator: " ")
+        guard let token = tokens.first else { return nil }
         var digits = token.replacingOccurrences(of: ",", with: "")
         var multiplier = 1.0
+        // Spoken labels: "47 million subscribers".
+        if tokens.count > 1, let value = Double(digits) {
+            switch tokens[1] {
+            case "thousand": return Int((value * 1_000).rounded())
+            case "million": return Int((value * 1_000_000).rounded())
+            case "billion": return Int((value * 1_000_000_000).rounded())
+            default: break
+            }
+        }
         switch digits.last {
         case "k": multiplier = 1_000; digits.removeLast()
         case "m": multiplier = 1_000_000; digits.removeLast()

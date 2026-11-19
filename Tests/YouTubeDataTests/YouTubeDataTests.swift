@@ -103,7 +103,8 @@ let channelPageData = """
 "header":{"pageHeaderRenderer":{"content":{"pageHeaderViewModel":{
 "banner":{"imageBannerViewModel":{"image":{"sources":[{"url":"https://yt3/b1060"},{"url":"https://yt3/b2560"}]}}},
 "metadata":{"contentMetadataViewModel":{"metadataRows":[{"metadataParts":[{"text":{"content":"@lighthousestories"}}]},
-{"metadataParts":[{"text":{"content":"4.5K subscribers"}},{"text":{"content":"3 videos"}}]}]}}}}}},
+{"metadataParts":[{"text":{"content":"4.5K subscribers"},"accessibilityLabel":"4.5 thousand subscribers"},{"text":{"content":"3 videos"}}]}]}}}}}},
+"sidebar":{"note":"Join 12 subscribers"},
 "contents":{"twoColumnBrowseResultsRenderer":{"tabs":[{"tabRenderer":{"content":{"richGridRenderer":{"contents":[
 {"richItemRenderer":{"content":{"videoRenderer":{"videoId":"aaaaaaaaaaa","title":{"runs":[{"text":"The keeper who vanished"}]},
 "viewCountText":{"simpleText":"1,000 views"},"publishedTimeText":{"simpleText":"10 months ago"},"lengthText":{"simpleText":"12:30"},
@@ -200,6 +201,8 @@ func page(with data: String) -> String {
         #expect(Parse.count("4.5K subscribers") == 4500)
         #expect(Parse.count("1.25M") == 1_250_000)
         #expect(Parse.count("No views") == 0)
+        #expect(Parse.count("47 million subscribers") == 47_000_000)
+        #expect(Parse.count("20.1 thousand views") == 20_100)
         #expect(Parse.count("views") == nil)
         #expect(Parse.keywords(#"lighthouses "maritime history" sea"#) == ["lighthouses", "maritime history", "sea"])
     }

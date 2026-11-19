@@ -49,16 +49,16 @@ func summary(_ snapshot: ChannelSnapshot) -> String {
         + "median views \(snapshot.medianViews.map(String.init) ?? "n/a"), complete: \(snapshot.complete)"
 }
 
-let modes: [(String, String?)] = savedKey == nil ? [("pages", nil)] : [("api", savedKey), ("pages", nil)]
+let modes: [(DataSource, String?)] = savedKey == nil ? [(.page, nil)] : [(.api, savedKey), (.page, nil)]
 if savedKey == nil && !pagesOnly { print("No YouTube Data API key in the Keychain, so only the page fallback is checked.") }
 
 for (mode, key) in modes {
-    print("\n== \(mode == "api" ? "YouTube Data API" : "Public pages")")
+    print("\n== \(mode == .api ? "YouTube Data API" : "Public pages")")
     let service = YouTubeService(key: { key }, ledger: ledger, pages: pages)
     await check("handle \(target) is taken") {
         let result = try await service.checkHandle(target)
         guard result.status == .taken, let channel = result.channel else { throw YTAError(.checkFailed, "reported as free") }
-        guard result.source.rawValue == mode else { throw YTAError(.checkFailed, "used \(result.source) instead of \(mode)") }
+        guard result.source == mode else { throw YTAError(.checkFailed, "used \(result.source) instead of \(mode)") }
         return "\(channel.title), source \(result.source.rawValue)"
     }
     await check("handle @\(freeHandle) looks free") {

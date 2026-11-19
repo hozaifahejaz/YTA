@@ -32,6 +32,11 @@ public struct TopicFile: Codable, Equatable, Sendable {
     public struct Pick: Codable, Equatable, Sendable {
         public var topic: Int
         public var title: String
+
+        public init(topic: Int, title: String) {
+            self.topic = topic
+            self.title = title
+        }
     }
 
     public var schemaVersion = 1

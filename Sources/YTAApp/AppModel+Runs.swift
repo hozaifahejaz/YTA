@@ -4,6 +4,7 @@ import Foundation
 import Support
 import UserNotifications
 import Workflow
+import YouTubeData
 
 /// Starting, approving and stopping node runs (section 5.2). Runs keep going with the window closed.
 extension AppModel {
@@ -24,7 +25,7 @@ extension AppModel {
         return RunStore(folder: folder).draft(for: run)
     }
 
-    private func context(for record: ChannelRecord) -> RunContext {
+    func context(for record: ChannelRecord) -> RunContext {
         RunContext(
             settings: settings,
             tools: health,
@@ -32,7 +33,9 @@ extension AppModel {
             automation: record.manifest.automation,
             onProgress: { [weak self] line in
                 Task { @MainActor in self?.progress(line) }
-            }
+            },
+            youtube: youtube,
+            http: URLSessionHTTP()
         )
     }
 
@@ -41,14 +44,14 @@ extension AppModel {
     }
 
     /// Starts a node in the selected channel.
-    func run(_ node: Node) {
+    func run(_ node: Node, note: String? = nil) {
         guard let record = selectedChannel else { return }
         guard canRun(node) else {
             report(YTAError(.checkFailed, "\(node.title) can't run yet.", suggestion: "Built-in steps arrive in later milestones. Custom steps run now."))
             return
         }
         guard runTasks[node.id] == nil else { return }
-        let driver = RunDriver(folder: record.folder, executor: NodeRunExecutor(node: node, context: context(for: record)))
+        let driver = RunDriver(folder: record.folder, executor: NodeRunExecutor(node: node, context: context(for: record), note: note))
         setState(of: node.id, in: record.folder, to: .running, summary: "")
         launch(node.id, title: node.title, channel: record) { await driver.start(node) }
     }
@@ -102,6 +105,7 @@ extension AppModel {
             let summary = RunStore(folder: folder).draft(for: run)?.summary ?? "Saved"
             setState(of: run.nodeID, in: folder, to: .done, summary: summary)
             note("\(run.nodeTitle) is done")
+            if run.nodeType == "name" { adoptChosenName(in: channel) }
         case .failed:
             setState(of: run.nodeID, in: folder, to: .failed, summary: run.error)
             note("\(run.nodeTitle) failed: \(run.error ?? "unknown error")", isError: true)

@@ -119,6 +119,24 @@ enum Parse {
         return Int((value * multiplier).rounded())
     }
 
+    /// Days since a relative date as pages write it: "3 weeks ago", "Streamed 2 years ago".
+    static func ageDays(_ text: String) -> Int? {
+        let words = text.lowercased().split(separator: " ").map(String.init)
+        guard let agoIndex = words.firstIndex(of: "ago"), agoIndex >= 2,
+              let value = Int(words[agoIndex - 2]) else { return nil }
+        let unit = words[agoIndex - 1]
+        let days: Double
+        switch true {
+        case unit.hasPrefix("second"), unit.hasPrefix("minute"), unit.hasPrefix("hour"): days = 0
+        case unit.hasPrefix("day"): days = 1
+        case unit.hasPrefix("week"): days = 7
+        case unit.hasPrefix("month"): days = 30.4
+        case unit.hasPrefix("year"): days = 365
+        default: return nil
+        }
+        return Int((Double(value) * days).rounded())
+    }
+
     static func int(_ text: String?) -> Int? {
         text.flatMap { Int($0) }
     }

@@ -181,7 +181,8 @@ public struct RunDriver: Sendable {
                 let typed = error as? YTAError
                 record.error = typed?.message ?? String(describing: error)
                 record.errorKind = typed?.kind
-                if typed?.kind == .schemaMismatch, record.attempts < maxAttempts {
+                // Only one repair per run: a second malformed result stops it.
+                if typed?.kind == .schemaMismatch, record.repairNote == nil, record.attempts < maxAttempts {
                     // One repair attempt for a malformed result (section 5.2): ask the engine again.
                     record.completedStages.removeAll { $0 == .executing || $0 == .validating }
                     record.repairNote = typed?.message

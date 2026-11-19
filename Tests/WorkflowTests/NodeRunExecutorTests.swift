@@ -99,11 +99,21 @@ func claudeResult(_ structured: String) -> String {
         #expect(try RunStore(folder: folder).load(result.id).unexpectedFiles == ["profile/sneaky.md"])
     }
 
-    @Test func builtInNodesAreNotRunnableYet() async throws {
+    @Test func stepsWithoutARecipeAreNotRunnable() async throws {
         let (folder, _, tools) = try setup()
-        let node = Node(NodeRegistry.type("name")!)
+        let node = Node(NodeRegistry.type("thumbnailStyle")!)
         let tool = try fakeClaude(outputs: [claudeResult(#"{"content":"x","summary":"y"}"#)], in: tools)
         let result = await RunDriver(folder: folder, executor: NodeRunExecutor(node: node, context: context(tool))).start(node)
         #expect(result.stage == .failed)
+    }
+
+    @Test func aSecondMalformedResultStopsTheRun() async throws {
+        let (folder, node, tools) = try setup()
+        let tool = try fakeClaude(outputs: [claudeResult(#"{"wrong":true}"#)], in: tools)
+        let result = await RunDriver(folder: folder, executor: NodeRunExecutor(node: node, context: context(tool))).start(node)
+        #expect(result.stage == .failed)
+        #expect(result.errorKind == .schemaMismatch)
+        let calls = try String(contentsOf: tools.appendingPathComponent("count"), encoding: .utf8)
+        #expect(calls.trimmingCharacters(in: .whitespacesAndNewlines) == "2")
     }
 }

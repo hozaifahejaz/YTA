@@ -36,6 +36,23 @@ public struct DataAPIClient: Sendable {
         return response.items?.first.map(\.record)
     }
 
+    /// One unit. When the newest upload in a playlist went up, if it has any.
+    public func newestUploadDate(playlist: String) async throws -> Date? {
+        let page: ListResponse<APIPlaylistItem> = try await get("playlistItems", [
+            "part": "contentDetails", "playlistId": playlist, "maxResults": "1",
+        ], cost: QuotaCost.list)
+        return Parse.date(page.items?.first?.contentDetails.videoPublishedAt)
+    }
+
+    /// One unit per 50 ids.
+    public func channels(ids: [String]) async throws -> [YouTubeChannel] {
+        guard !ids.isEmpty else { return [] }
+        let response: ListResponse<APIChannel> = try await get("channels", [
+            "part": "snippet,statistics,contentDetails", "id": ids.prefix(50).joined(separator: ","),
+        ], cost: QuotaCost.list)
+        return (response.items ?? []).map(\.record)
+    }
+
     /// One unit per 50 videos. Returns ids newest first.
     public func uploadIDs(playlist: String, limit: Int = .max) async throws -> (ids: [String], complete: Bool) {
         var ids: [String] = []
@@ -219,7 +236,10 @@ struct APIChannel: Decodable {
 }
 
 struct APIPlaylistItem: Decodable {
-    struct Content: Decodable { let videoId: String }
+    struct Content: Decodable {
+        let videoId: String
+        let videoPublishedAt: String?
+    }
     let contentDetails: Content
 }
 

@@ -76,8 +76,8 @@ public struct PageReader: Sendable {
     }
 
     /// Nil when the page does not exist.
-    func data(at path: String) async throws -> JSONValue? {
-        let result = try await pages.load(Self.url(path))
+    func data(at path: String, query: [URLQueryItem] = []) async throws -> JSONValue? {
+        let result = try await pages.load(Self.url(path, query: query))
         if result.status == 404 { return nil }
         guard (200..<300).contains(result.status) else {
             throw YTAError(.network, "YouTube answered with status \(result.status).")
@@ -108,6 +108,20 @@ public struct PageReader: Sendable {
         let result = try await pages.load(Self.url("/watch", query: [URLQueryItem(name: "v", value: id)]))
         guard (200..<300).contains(result.status) else { return nil }
         return PageData.channelID(fromWatchPage: result.html)
+    }
+
+    /// Channels on the search page, with the channel filter on.
+    public func searchChannels(_ query: String) async throws -> [ChannelMatch] {
+        guard let data = try await data(at: "/results", query: [
+            URLQueryItem(name: "search_query", value: query), URLQueryItem(name: "sp", value: "EgIQAg=="),
+        ]) else { return [] }
+        return PageData.channelResults(from: data)
+    }
+
+    /// Days since the channel's newest long-form upload, read from its videos tab.
+    public func newestUploadDays(channelID: String) async throws -> Int? {
+        guard let data = try await data(at: "/channel/\(channelID)/videos") else { return nil }
+        return PageData.newestUploadDays(from: data)
     }
 
     /// The latest videos and Shorts the channel's tabs show without scrolling.

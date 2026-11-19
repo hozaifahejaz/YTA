@@ -164,3 +164,24 @@ public struct SearchHit: Codable, Equatable, Sendable {
     public var channelTitle: String?
     public var publishedAt: Date?
 }
+
+/// A channel found by searching for a name (section 7.3, step 3).
+public struct ChannelMatch: Codable, Equatable, Sendable {
+    public var id: String
+    public var title: String
+    public var handle: String?
+    public var subscriberCount: Int?
+    /// Days since the newest upload. Nil when unknown or when there are no uploads.
+    public var lastUploadDays: Int?
+    public var source: DataSource
+
+    public init(id: String, title: String, handle: String? = nil, subscriberCount: Int? = nil,
+                lastUploadDays: Int? = nil, source: DataSource) {
+        self.id = id
+        self.title = title
+        self.handle = handle
+        self.subscriberCount = subscriberCount
+        self.lastUploadDays = lastUploadDays
+        self.source = source
+    }
+}

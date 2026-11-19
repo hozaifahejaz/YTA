@@ -353,6 +353,8 @@ struct RunSection: View {
                     Spacer()
                     Button("Stop") { model.stop(node) }
                 }
+            } else if let names = model.pendingNames(for: node) {
+                NamePickerView(node: node, file: names)
             } else if let run, run.stage == .awaitingApproval, let draft = model.draft(for: run) {
                 ForEach(draft.files.keys.sorted(), id: \.self) { file in
                     VStack(alignment: .leading, spacing: Spacing.xs) {

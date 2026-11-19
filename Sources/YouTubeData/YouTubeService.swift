@@ -49,6 +49,41 @@ public struct YouTubeService: Sendable {
                            channel: channel, source: .page, checkedAt: now())
     }
 
+    // MARK: Same-name channels
+
+    /// Channels whose name is close to `name`, with size and last upload (section 7.3, step 3).
+    /// The API path costs about 100 units plus 1 per match; it is used only when that much is left.
+    public func searchChannels(_ name: String, limit: Int = 5) async throws -> [ChannelMatch] {
+        if let api = api(units: QuotaCost.search + 1 + limit) {
+            do {
+                var options = DataAPIClient.SearchOptions()
+                options.kind = .channel
+                options.maxResults = limit
+                let hits = try await api.search(name, options: options)
+                let channels = try await api.channels(ids: hits.map(\.id))
+                var matches: [ChannelMatch] = []
+                for channel in channels {
+                    var days: Int?
+                    if let uploads = channel.uploadsPlaylistID, (channel.videoCount ?? 1) > 0,
+                       let date = try await api.newestUploadDate(playlist: uploads) {
+                        days = max(0, Int(now().timeIntervalSince(date) / 86_400))
+                    }
+                    matches.append(ChannelMatch(id: channel.id, title: channel.title, handle: channel.handle,
+                                                subscriberCount: channel.subscribersHidden ? nil : channel.subscriberCount,
+                                                lastUploadDays: days, source: .api))
+                }
+                return matches
+            } catch let error as YTAError where error.kind == .quotaExhausted {
+                // Fall through to pages.
+            }
+        }
+        var matches = Array(try await reader.searchChannels(name).prefix(limit))
+        for index in matches.indices {
+            matches[index].lastUploadDays = try await reader.newestUploadDays(channelID: matches[index].id)
+        }
+        return matches
+    }
+
     // MARK: Resolve a link
 
     public func resolve(_ input: String) async throws -> (channel: YouTubeChannel, source: DataSource) {

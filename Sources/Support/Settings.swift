@@ -101,6 +101,8 @@ public struct AppSettings: Codable, Sendable, Equatable {
     /// Days after a video is finished before bulky working files are cleared. Nil keeps them.
     public var clearWorkingFilesAfterDays: Int?
     public var finishedFirstRun: Bool
+    /// When a same-name channel counts as only a small overlap (section 7.3, step 4).
+    public var nameOverlap: NameOverlapThresholds
 
     public init() {
         schemaVersion = Self.currentSchemaVersion
@@ -111,10 +113,12 @@ public struct AppSettings: Codable, Sendable, Equatable {
         defaultWriter = .codex
         clearWorkingFilesAfterDays = nil
         finishedFirstRun = false
+        nameOverlap = NameOverlapThresholds()
     }
 
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, engines, storagePath, imageRoute, automationDefault, defaultWriter, clearWorkingFilesAfterDays, finishedFirstRun
+        case nameOverlap
     }
 
     /// Missing keys fall back to defaults, so older files keep loading.
@@ -128,6 +132,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         storagePath = try c.decodeIfPresent(String.self, forKey: .storagePath)
         imageRoute = (try? c.decodeIfPresent(ImageRoute.self, forKey: .imageRoute)) ?? .appDrawn
         automationDefault = (try? c.decodeIfPresent(AutomationLevel.self, forKey: .automationDefault)) ?? .approveEvery
+        nameOverlap = (try? c.decodeIfPresent(NameOverlapThresholds.self, forKey: .nameOverlap)) ?? NameOverlapThresholds()
         defaultWriter = (try? c.decodeIfPresent(EngineID.self, forKey: .defaultWriter)) ?? .codex
         clearWorkingFilesAfterDays = try c.decodeIfPresent(Int.self, forKey: .clearWorkingFilesAfterDays)
         finishedFirstRun = try c.decodeIfPresent(Bool.self, forKey: .finishedFirstRun) ?? false
@@ -170,5 +175,16 @@ public struct SettingsStore: Sendable {
 
     public func save(_ settings: AppSettings) throws {
         try AtomicFile.writeJSON(settings, to: url)
+    }
+}
+
+/// A same-name channel is a small overlap when it is under this size and has not uploaded for this long.
+public struct NameOverlapThresholds: Codable, Sendable, Equatable {
+    public var maxSubscribers: Int
+    public var minDaysSinceUpload: Int
+
+    public init(maxSubscribers: Int = 1_000, minDaysSinceUpload: Int = 365) {
+        self.maxSubscribers = maxSubscribers
+        self.minDaysSinceUpload = minDaysSinceUpload
     }
 }

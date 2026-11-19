@@ -203,6 +203,30 @@ public enum PageData {
         return records
     }
 
+    /// Channels listed on a search results page.
+    public static func channelResults(from data: JSONValue) -> [ChannelMatch] {
+        var matches: [ChannelMatch] = []
+        for renderer in all("channelRenderer", in: data) {
+            guard let id = renderer["channelId"]?.stringValue else { continue }
+            var handle: String?
+            var subscribers: Int?
+            // YouTube moved the handle into the old subscriber field; read both by shape.
+            for field in ["subscriberCountText", "videoCountText"] {
+                guard let text = text(renderer[field]) else { continue }
+                if text.hasPrefix("@") { handle = String(text.dropFirst()) }
+                else if text.lowercased().contains("subscriber") { subscribers = Parse.count(text) }
+            }
+            matches.append(ChannelMatch(id: id, title: text(renderer["title"]) ?? "", handle: handle,
+                                        subscriberCount: subscribers, source: .page))
+        }
+        return matches
+    }
+
+    /// Days since the newest upload listed on a channel's videos tab.
+    public static func newestUploadDays(from data: JSONValue) -> Int? {
+        videos(from: data).compactMap { $0.publishedText.flatMap(Parse.ageDays) }.min()
+    }
+
     /// The channel that owns the video on a watch page.
     public static func channelID(fromWatchPage html: String) -> String? {
         if let player = embedded("ytInitialPlayerResponse", in: html),

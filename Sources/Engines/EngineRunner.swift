@@ -66,7 +66,12 @@ public struct EngineRunner: Sendable {
                 process.terminationHandler = { process in
                     // A child the tool left behind can hold a pipe open; don't wait on it forever.
                     _ = drained.wait(timeout: .now() + 5)
+                    // Close our ends and break the process ↔ handler cycle, so a run leaves no open files.
+                    try? outHandle.close()
+                    try? errHandle.close()
+                    process.terminationHandler = nil
                     state.finish(status: process.terminationStatus, stderr: errBuffer.string, timedOut: state.timedOut)
+                    state.releaseProcess()
                 }
                 do {
                     try process.run()
@@ -194,6 +199,10 @@ final class RunState: @unchecked Sendable {
         let alreadyCancelled = cancelled
         lock.unlock()
         if alreadyCancelled { process.terminate() }
+    }
+
+    func releaseProcess() {
+        lock.lock(); process = nil; lock.unlock()
     }
 
     func consume(_ chunk: Data) {

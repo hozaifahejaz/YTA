@@ -116,6 +116,7 @@ struct VoicePickView: View {
             .buttonStyle(.plain)
             .disabled(voice.previewURL == nil)
             .help("Play a sample")
+            .accessibilityLabel(player.playing == voice.id ? "Stop sample of \(voice.name)" : "Play sample of \(voice.name)")
             VStack(alignment: .leading, spacing: 0) {
                 Text(voice.name).font(Typography.body)
                 Text([voice.provider, voice.gender, voice.accent, voice.category].compactMap { $0 }.joined(separator: " · "))

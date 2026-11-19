@@ -81,6 +81,7 @@ private struct KitRow: View {
                     }
                     .buttonStyle(.borderless)
                     .help("Show in Finder")
+                    .accessibilityLabel("Show in Finder")
                 } else if !item.value.isEmpty {
                     Button {
                         NSPasteboard.general.clearContents()

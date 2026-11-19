@@ -239,6 +239,7 @@ struct MusicSection: View {
                     }
                     .buttonStyle(.plain)
                     .help("Remove from the library")
+                    .accessibilityLabel("Remove \(track.title) from the library")
                 }
             }
         }

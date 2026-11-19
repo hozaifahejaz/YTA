@@ -79,6 +79,7 @@ private struct VideoRowView: View {
                         .frame(width: 16)
                 }
                 .buttonStyle(.borderless)
+                .accessibilityLabel(expanded ? "Collapse \(video.title)" : "Expand \(video.title)")
                 Text("\(index + 1)").font(Typography.caption).foregroundStyle(Palette.textTertiary).monospacedDigit()
                 VStack(alignment: .leading, spacing: 2) {
                     Text(video.title).font(Typography.headline).lineLimit(1)

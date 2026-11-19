@@ -22,10 +22,6 @@ public enum NodeState: String, Codable, Sendable, CaseIterable {
     }
 }
 
-public enum Effort: String, Codable, Sendable, CaseIterable {
-    case low, medium, high, xhigh, max
-}
-
 /// Which tool, model and effort a node runs on.
 public struct EngineChoice: Codable, Sendable, Equatable {
     public var tool: EngineID

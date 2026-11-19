@@ -55,6 +55,15 @@ final class AppModel {
 
     @ObservationIgnored private var watcher: ChannelWatcher?
 
+    // MARK: Runs
+
+    /// Running tasks by node id.
+    @ObservationIgnored var runTasks: [String: Task<Void, Never>] = [:]
+    /// The latest progress line per running node id.
+    var runProgress: [String: String] = [:]
+    @ObservationIgnored let keepAwake = KeepAwake()
+    @ObservationIgnored var planDefaults = PlanDefaults.load()
+
     init(secrets: any SecretStore = KeychainSecretStore()) {
         let base = AppPaths.standard()
         let store = SettingsStore(url: base.settingsFile)
@@ -75,8 +84,13 @@ final class AppModel {
         }
         Log.shared.configure(folder: paths.logs)
         Log.shared.info("YTA started")
+        let planFile = paths.support.appendingPathComponent("plan-defaults.json")
+        PlanDefaults.installEditableCopy(at: planFile)
+        planDefaults = PlanDefaults.load(override: planFile)
+        Notifier.requestPermission()
         reloadChannels()
         health = HealthCheck.load(from: paths)
+        resumeInterruptedRuns()
         if !settings.finishedFirstRun { showHealthCheck = true }
         Task { await runHealthCheck() }
     }
@@ -224,7 +238,7 @@ final class AppModel {
         startWatching()
     }
 
-    private func loadSetupRow() {
+    func loadSetupRow() {
         guard let record = selectedChannel else {
             setupRow = nil
             return
@@ -258,8 +272,19 @@ final class AppModel {
         }
     }
 
-    func updateNode(_ node: Node) {
-        mutateRow { $0.update(node) }
+    /// Saves the owner's edits to a node. Only editable fields are taken, so a stale
+    /// inspector copy never overwrites the state a run has set.
+    func updateNode(_ edited: Node) {
+        mutateRow { row in
+            guard var current = row[edited.id] else { return }
+            current.title = edited.title
+            current.engine = edited.engine
+            current.promptTemplate = edited.promptTemplate
+            current.inputs = edited.inputs
+            current.outputs = edited.outputs
+            current.approval = edited.approval
+            row.update(current)
+        }
     }
 
     func insertCustomNode(after anchor: String?) {

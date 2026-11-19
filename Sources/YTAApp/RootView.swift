@@ -96,8 +96,9 @@ struct ActivityStrip: View {
 
     var body: some View {
         HStack(spacing: Spacing.s) {
-            Image(systemName: model.isCheckingHealth ? "arrow.triangle.2.circlepath" : "circle.fill")
-                .font(.system(size: model.isCheckingHealth ? 11 : 6))
+            Image(systemName: busy ? "arrow.triangle.2.circlepath" : "circle.fill")
+                .font(.system(size: busy ? 11 : 6))
+                .symbolEffect(.rotate, isActive: busy)
                 .foregroundStyle(Palette.textTertiary)
                 .accessibilityHidden(true)
             Text(statusText)
@@ -127,10 +128,13 @@ struct ActivityStrip: View {
         .overlay(alignment: .top) { Divider() }
     }
 
+    private var busy: Bool { model.isCheckingHealth || model.runningCount > 0 }
+
     private var lastIsError: Bool { model.activity.last?.isError ?? false }
 
     private var statusText: String {
         if model.isCheckingHealth { return "Checking tools…" }
+        if model.runningCount > 0, let last = model.activity.last { return last.text }
         if let last = model.activity.last, Date().timeIntervalSince(last.date) < 600 { return last.text }
         return "Nothing is running"
     }

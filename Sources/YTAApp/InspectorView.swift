@@ -71,6 +71,10 @@ struct NodeInspector: View {
                 LabeledContent("Done by", value: workerText)
             }
 
+            if model.canRun(node) || node.state == .needsYou {
+                RunSection(node: node)
+            }
+
             if draft.value.engine != nil {
                 Section("Engine") {
                     Picker("Tool", selection: engineTool) {
@@ -326,5 +330,80 @@ struct ChannelInspector: View {
             get: { current[keyPath: keyPath] },
             set: { value in model.updateSources { $0[keyPath: keyPath] = value } }
         )
+    }
+}
+
+// MARK: - Running a step
+
+/// Run, progress, the draft waiting for approval, and the last error (section 5.2).
+struct RunSection: View {
+    @Environment(AppModel.self) private var model
+    let node: Node
+
+    var body: some View {
+        let run = model.latestRun(for: node)
+        Section {
+            if model.isRunning(node) {
+                HStack(spacing: Spacing.s) {
+                    ProgressView().controlSize(.small)
+                    Text(lastLine)
+                        .font(Typography.callout)
+                        .foregroundStyle(Palette.textSecondary)
+                        .lineLimit(2)
+                    Spacer()
+                    Button("Stop") { model.stop(node) }
+                }
+            } else if let run, run.stage == .awaitingApproval, let draft = model.draft(for: run) {
+                ForEach(draft.files.keys.sorted(), id: \.self) { file in
+                    VStack(alignment: .leading, spacing: Spacing.xs) {
+                        Text(file).font(Typography.mono).foregroundStyle(Palette.textTertiary)
+                        ScrollView {
+                            Text(draft.files[file] ?? "")
+                                .font(Typography.body)
+                                .textSelection(.enabled)
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .frame(minHeight: 120, maxHeight: 260)
+                    }
+                }
+                HStack {
+                    Button("Discard") { model.discard(node) }
+                    Button("Run Again") { model.discard(node); model.run(node) }
+                    Spacer()
+                    Button("Approve") { model.approve(node) }
+                        .buttonStyle(.borderedProminent)
+                        .tint(Palette.accent)
+                }
+            } else {
+                if let run, run.stage == .failed, let error = run.error {
+                    Label(error, systemImage: "exclamationmark.triangle")
+                        .font(Typography.callout)
+                        .foregroundStyle(Palette.danger)
+                }
+                HStack {
+                    if let run, let usage = run.engine {
+                        Text("Last run on \(usage.tool.displayName)")
+                            .font(Typography.caption)
+                            .foregroundStyle(Palette.textTertiary)
+                    }
+                    Spacer()
+                    Button(node.state == .done ? "Run Again" : "Run") { model.run(node) }
+                        .buttonStyle(.borderedProminent)
+                        .tint(Palette.accent)
+                        .disabled(!model.canRun(node))
+                }
+            }
+        } header: {
+            Text(run?.stage == .awaitingApproval && !model.isRunning(node) ? "Draft to review" : "Run")
+        } footer: {
+            if let run, run.stage == .awaitingApproval, !model.isRunning(node) {
+                Text("Nothing is saved to the channel until you approve.")
+            }
+        }
+    }
+
+    private var lastLine: String {
+        model.activity.last { $0.text.hasPrefix("\(node.title):") }?.text
+            .replacingOccurrences(of: "\(node.title): ", with: "") ?? "Starting…"
     }
 }

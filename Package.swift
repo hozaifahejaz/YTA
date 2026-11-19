@@ -7,19 +7,21 @@ import PackageDescription
 
 var products: [Product] = [
     .library(name: "YTACore", targets: ["Support", "ChannelStore", "Workflow", "Secrets", "Engines"]),
+    .executable(name: "yta-engine-check", targets: ["EngineCheck"]),
 ]
 
 var targets: [Target] = [
     .target(name: "Support"),
     .target(name: "Secrets", dependencies: ["Support"]),
     .target(name: "ChannelStore", dependencies: ["Support"]),
-    .target(name: "Workflow", dependencies: ["Support", "ChannelStore"]),
+    .target(name: "Workflow", dependencies: ["Support", "ChannelStore", "Engines"]),
     .target(name: "Engines", dependencies: ["Support"]),
+    .executableTarget(name: "EngineCheck", dependencies: ["Support", "ChannelStore", "Workflow", "Engines"]),
 
     .testTarget(name: "SupportTests", dependencies: ["Support"]),
     .testTarget(name: "SecretsTests", dependencies: ["Secrets", "Support"]),
     .testTarget(name: "ChannelStoreTests", dependencies: ["ChannelStore", "Support"]),
-    .testTarget(name: "WorkflowTests", dependencies: ["Workflow", "ChannelStore", "Support"]),
+    .testTarget(name: "WorkflowTests", dependencies: ["Workflow", "ChannelStore", "Engines", "Support"]),
     .testTarget(name: "EnginesTests", dependencies: ["Engines", "Support"]),
 ]
 

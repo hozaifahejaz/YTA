@@ -53,6 +53,12 @@ public struct RunRecord: Codable, Sendable, Equatable, Identifiable {
     public var updatedAt: Date
     public var error: String?
     public var errorKind: YTAErrorKind?
+    /// Set before a repair attempt: what was wrong with the last result.
+    public var repairNote: String?
+    /// Files that appeared outside the run folder during the run (section 5.2).
+    public var unexpectedFiles: [String]?
+    /// One line describing the result, for the canvas.
+    public var summary: String?
 
     public init(node: Node, id: String = Identifier.make(prefix: "run"), date: Date = Date()) {
         self.id = id
@@ -176,7 +182,9 @@ public struct RunDriver: Sendable {
                 record.error = typed?.message ?? String(describing: error)
                 record.errorKind = typed?.kind
                 if typed?.kind == .schemaMismatch, record.attempts < maxAttempts {
-                    // One repair attempt for a malformed result (section 5.2).
+                    // One repair attempt for a malformed result (section 5.2): ask the engine again.
+                    record.completedStages.removeAll { $0 == .executing || $0 == .validating }
+                    record.repairNote = typed?.message
                     try? store.save(record)
                     return await drive(record)
                 }

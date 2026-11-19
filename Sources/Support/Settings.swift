@@ -29,6 +29,11 @@ public enum EngineID: String, Codable, Sendable, CaseIterable, Identifiable {
     }
 }
 
+/// How hard an engine thinks. Each adapter maps it to its own tool's values.
+public enum Effort: String, Codable, Sendable, CaseIterable {
+    case low, medium, high, xhigh, max
+}
+
 public enum AutomationLevel: String, Codable, Sendable, CaseIterable, Identifiable {
     /// Approve every node.
     case approveEvery

@@ -31,9 +31,9 @@ struct YTAApp: App {
                         .disabled(model.setupRow == nil)
                 }
                 Divider()
-                Button("Stop Run") {}
+                Button("Stop All Runs") { model.stopAll() }
                     .keyboardShortcut(".", modifiers: .command)
-                    .disabled(true)
+                    .disabled(model.runningCount == 0)
             }
             CommandGroup(after: .appSettings) {
                 Button("Health Check…") { model.showHealthCheck = true }
@@ -76,7 +76,10 @@ struct MenuBarContent: View {
     @Environment(\.openWindow) private var openWindow
 
     var body: some View {
-        Text("Nothing is running")
+        Text(model.runningCount == 0 ? "Nothing is running" : "\(model.runningCount) step\(model.runningCount == 1 ? "" : "s") running")
+        if model.runningCount > 0 {
+            Button("Stop All Runs") { model.stopAll() }
+        }
         Divider()
         Button("Open YTA") {
             openWindow(id: "main")

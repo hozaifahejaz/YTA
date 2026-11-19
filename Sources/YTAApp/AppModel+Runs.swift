@@ -28,13 +28,14 @@ extension AppModel {
     }
 
     func context(for record: ChannelRecord, node: Node? = nil) -> RunContext {
-        RunContext(
+        let owner = WeakModel(self)
+        return RunContext(
             settings: settings,
             tools: health,
             planDefaults: planDefaults,
             automation: record.manifest.automation,
-            onProgress: { [weak self] line in
-                Task { @MainActor in self?.progress(line) }
+            onProgress: { line in
+                Task { @MainActor in owner.model?.progress(line) }
             },
             youtube: youtube,
             http: URLSessionHTTP(),
@@ -53,7 +54,7 @@ extension AppModel {
         )
     }
 
-    private func progress(_ line: String) {
+    fileprivate func progress(_ line: String) {
         note(line)
     }
 
@@ -188,4 +189,10 @@ enum Notifier {
         let request = UNNotificationRequest(identifier: UUID().uuidString, content: content, trigger: nil)
         UNUserNotificationCenter.current().add(request)
     }
+}
+
+/// Lets background progress reach the model without keeping it alive.
+private final class WeakModel: @unchecked Sendable {
+    weak var model: AppModel?
+    init(_ model: AppModel) { self.model = model }
 }

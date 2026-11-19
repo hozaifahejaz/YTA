@@ -14,13 +14,18 @@ import Testing
         #expect(result.succeeded, "\(result.stderr)")
     }
 
-    @Test(.enabled(if: RenderIntegrationTests.enabled)) func aVideoRendersAt1080pAndPassesTheFinalCheck() async throws {
+    @Test(.enabled(if: RenderIntegrationTests.enabled), arguments: [false, true])
+    func aVideoRendersAt1080pAndPassesTheFinalCheck(vertical: Bool) async throws {
         let env = ProcessInfo.processInfo.environment
         let scratch = FileManager.default.temporaryDirectory.appendingPathComponent("yta-render-\(UUID().uuidString)")
         try FileManager.default.createDirectory(at: scratch, withIntermediateDirectories: true)
         let image = scratch.appendingPathComponent("photo.png")
         try await ffmpeg(["-f", "lavfi", "-i", "testsrc2=size=1920x1080", "-frames:v", "1", image.path])
-        let (folder, video) = try EditingTests.prepared(image: try Data(contentsOf: image))
+        var (folder, video) = try EditingTests.prepared(image: try Data(contentsOf: image))
+        if vertical {
+            video.settings.short = true
+            try VideoStore(folder: folder).save(video)
+        }
         let wav = try folder.url(video.path("audio/narration.wav"))
         try FileManager.default.createDirectory(at: wav.deletingLastPathComponent(), withIntermediateDirectories: true)
         try await ffmpeg(["-f", "lavfi", "-i", "sine=frequency=220:duration=7.8", "-af", "volume=0.3", "-ar", "48000", wav.path])
@@ -43,6 +48,8 @@ import Testing
         }
         let report = try folder.readJSON(QualityReport.self, video.path("qc.json"))
         #expect(report.passed)
+        let resolution = report.checks.first { $0.name == "Resolution" }?.detail ?? ""
+        #expect(resolution.hasPrefix(vertical ? "1080 × 1920" : "1920 × 1080"))
         print(report.checks.map { "\($0.name): \($0.detail)" }.joined(separator: "\n"))
     }
 }

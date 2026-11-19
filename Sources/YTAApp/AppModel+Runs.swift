@@ -41,7 +41,14 @@ extension AppModel {
             artwork: CoreGraphicsRenderer(),
             video: node.flatMap { VideoStore(folder: record.folder).video(containing: $0.id) },
             ai33Key: { [secrets] in try? secrets.valueForRequest(.ai33pro) },
-            narrationTools: MacNarrationTools()
+            narrationTools: MacNarrationTools(),
+            mediaKey: { [secrets] source in
+                switch source {
+                case "pexels": try? secrets.valueForRequest(.pexels)
+                case "pixabay": try? secrets.valueForRequest(.pixabay)
+                default: nil
+                }
+            }
         )
     }
 

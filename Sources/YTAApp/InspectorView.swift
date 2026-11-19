@@ -361,6 +361,8 @@ struct RunSection: View {
                 TopicPickView(node: node, file: topics)
             } else if let script = model.pendingScript(for: node) {
                 ScriptDraftView(node: node, script: script.script, review: script.review)
+            } else if let media = model.pendingMedia(for: node) {
+                MediaBoardView(node: node, plan: media.plan, ledger: media.ledger, shots: media.shots, run: media.run)
             } else if let voices = model.pendingVoices(for: node) {
                 VoicePickView(node: node, voices: voices)
             } else if let skills = model.pendingSkills(for: node) {

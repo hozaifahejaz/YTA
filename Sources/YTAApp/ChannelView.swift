@@ -14,6 +14,7 @@ struct ChannelView: View {
                 header
                 setupSection
                 videosSection
+                MusicSection()
             }
             .padding(.vertical, Spacing.l)
         }

@@ -28,6 +28,8 @@ public struct RunContext: Sendable {
     public var ai33Key: @Sendable () -> String?
     /// Transcription and audio joining on the Mac. Nil where there is no AVFoundation.
     public var narrationTools: (any NarrationTools)?
+    /// A media service's key by source id ("pexels", "pixabay"), read only when that source is searched.
+    public var mediaKey: @Sendable (String) -> String?
     /// Always `VoiceLock.current` in the app. Tests set it with `@testable`; nothing else can.
     var voiceRule: VoiceLock.Rule? = VoiceLock.current
 
@@ -43,7 +45,8 @@ public struct RunContext: Sendable {
         artwork: (any ArtworkRenderer)? = nil,
         video: VideoFile? = nil,
         ai33Key: @escaping @Sendable () -> String? = { nil },
-        narrationTools: (any NarrationTools)? = nil
+        narrationTools: (any NarrationTools)? = nil,
+        mediaKey: @escaping @Sendable (String) -> String? = { _ in nil }
     ) {
         self.settings = settings
         self.tools = tools
@@ -57,6 +60,7 @@ public struct RunContext: Sendable {
         self.video = video
         self.ai33Key = ai33Key
         self.narrationTools = narrationTools
+        self.mediaKey = mediaKey
     }
 
     /// A node's file path inside the channel: video files sit in the video's `Working files`.

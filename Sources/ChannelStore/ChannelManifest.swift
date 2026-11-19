@@ -128,6 +128,10 @@ public struct SourcesConfig: Codable, Sendable, Equatable {
     public var fairUse: Bool = false
     /// CC BY-SA carries a share-alike condition, so a channel can switch it off.
     public var allowShareAlike: Bool = true
+    /// Media sources in the order they are searched. Nil keeps the shipped order.
+    public var mediaOrder: [String]? = nil
+    /// Media sources switched off for this channel.
+    public var mediaOff: [String]? = nil
 
     public init() {}
 }

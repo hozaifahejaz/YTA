@@ -275,7 +275,7 @@ extension AppModel {
                 })
             },
             makeAction("list_step_types", "Every built-in step type: id, title, what it does, inputs and outputs.", .read) { _, _ in
-                .array(NodeType.all.map { type in
+                .array(NodeRegistry.all.map { type -> JSONValue in
                     .object(["id": .string(type.id), "title": .string(type.title), "summary": .string(type.summary),
                              "inputs": .array(type.inputs.map { .string($0) }), "outputs": .array(type.outputs.map { .string($0) }),
                              "locked_reason": Self.text(type.lockedReason)])
@@ -426,7 +426,7 @@ extension AppModel {
                 let record = try m.controlChannel(input)
                 let url = try record.folder.url(input.optionalString("path") ?? "")
                 let names = try FileManager.default.contentsOfDirectory(at: url, includingPropertiesForKeys: [.isDirectoryKey, .fileSizeKey])
-                return .array(names.sorted { $0.lastPathComponent < $1.lastPathComponent }.map { item in
+                return .array(names.sorted { $0.lastPathComponent < $1.lastPathComponent }.map { item -> JSONValue in
                     let values = try? item.resourceValues(forKeys: [.isDirectoryKey, .fileSizeKey])
                     return .object(["name": .string(item.lastPathComponent), "folder": .bool(values?.isDirectory ?? false),
                                     "bytes": .number(Double(values?.fileSize ?? 0))])

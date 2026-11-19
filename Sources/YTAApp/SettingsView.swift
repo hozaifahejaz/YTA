@@ -235,6 +235,16 @@ struct AutomationSettings: View {
             } footer: {
                 Text("Each channel can change this. The final check always runs.")
             }
+            Section {
+                CapField(title: "Engine spend per video", unit: "USD", value: Binding(get: { model.settings.caps.perVideoUSD }, set: { value in model.updateSettings { $0.caps.perVideoUSD = value } }))
+                CapField(title: "Engine spend per day", unit: "USD", value: Binding(get: { model.settings.caps.perDayUSD }, set: { value in model.updateSettings { $0.caps.perDayUSD = value } }))
+                CapField(title: "Narration per video", unit: "characters", value: Binding(get: { model.settings.caps.perVideoVoiceCharacters.map(Double.init) }, set: { value in model.updateSettings { $0.caps.perVideoVoiceCharacters = value.map { Int($0) } } }))
+                CapField(title: "Narration per day", unit: "characters", value: Binding(get: { model.settings.caps.perDayVoiceCharacters.map(Double.init) }, set: { value in model.updateSettings { $0.caps.perDayVoiceCharacters = value.map { Int($0) } } }))
+            } header: {
+                Text("Spending caps")
+            } footer: {
+                Text("The queue stops when a cap is reached. Engine spend is what the tools report for each run; on a subscription it counts against your plan, not your card. Leave a cap empty for no limit.")
+            }
             Section("Images") {
                 Picker("Image route", selection: Binding(get: { model.settings.imageRoute }, set: { value in model.updateSettings { $0.imageRoute = value } })) {
                     ForEach(ImageRoute.allCases) { Text($0.title).tag($0) }
@@ -242,5 +252,23 @@ struct AutomationSettings: View {
             }
         }
         .formStyle(.grouped)
+    }
+}
+
+/// An optional number: empty means no cap.
+private struct CapField: View {
+    let title: String
+    let unit: String
+    @Binding var value: Double?
+
+    var body: some View {
+        LabeledContent(title) {
+            HStack(spacing: Spacing.xs) {
+                TextField("No cap", value: $value, format: .number)
+                    .multilineTextAlignment(.trailing)
+                    .frame(width: 100)
+                Text(unit).font(Typography.caption).foregroundStyle(Palette.textTertiary)
+            }
+        }
     }
 }

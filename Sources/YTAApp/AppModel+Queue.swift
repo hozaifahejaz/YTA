@@ -152,10 +152,58 @@ extension AppModel {
             runningQueues.remove(channel.manifest.id)
             return
         }
+        if let reason = SpendLedger(url: spendLedgerURL).capReached(settings.caps, videoID: video.id) {
+            runningQueues.remove(channel.manifest.id)
+            note("The queue for \(channel.manifest.name) stopped. \(reason) Raise the cap in Settings to go on.", isError: true)
+            Notifier.post(title: "Spending cap reached", body: reason)
+            return
+        }
         if video.status == .queued {
             video.status = .working
             try? store.save(video)
         }
         run(node, in: channel)
+    }
+}
+
+extension AppModel {
+    var spendLedgerURL: URL { paths.support.appendingPathComponent("spend.json") }
+
+    func estimate(for video: VideoFile) -> VideoEstimate {
+        guard let folder = selectedChannel?.folder else {
+            return VideoEstimate.make(video, style: ScriptStyle(), editing: EditingStyle())
+        }
+        return VideoEstimate.make(video, style: ScriptStyle.load(folder), editing: EditingStyle.load(folder))
+    }
+
+    /// Adds a finished run's engine spend and narration characters to the ledger the caps read.
+    func recordSpend(_ run: RunRecord, channel: ChannelRecord) {
+        let folder = channel.folder
+        let videoID = VideoStore(folder: folder).video(containing: run.nodeID)?.id
+        var characters = 0
+        if run.nodeType == "narration", run.stage == .finished, let videoID,
+           let video = VideoStore(folder: folder).video(videoID),
+           let beats = try? folder.readJSON([ScriptBeat].self, video.path("script.beats.json")) {
+            characters = beats.reduce(0) { $0 + $1.text.count }
+        }
+        let entry = SpendLedger.Entry(date: Date(), channelID: channel.manifest.id, videoID: videoID, runID: run.id,
+                                      usd: UsageLog.costUSD(run: run, folder: folder), voiceCharacters: characters)
+        do {
+            try SpendLedger(url: spendLedgerURL).record(entry)
+        } catch {
+            Log.shared.warning("Spend could not be recorded: \(error)")
+        }
+    }
+
+    /// Clears bulky working files of long-finished videos, if Settings asks for it.
+    func clearOldWorkingFiles() async {
+        guard let days = settings.clearWorkingFilesAfterDays else { return }
+        let folders = channels.map(\.folder)
+        let freed = await Task.detached {
+            folders.reduce(Int64(0)) { total, folder in total + ((try? WorkingFiles.clear(folder: folder, olderThanDays: days)) ?? 0) }
+        }.value
+        if freed > 0 {
+            note("Cleared \(ByteCountFormatter.string(fromByteCount: freed, countStyle: .file)) of old working files")
+        }
     }
 }

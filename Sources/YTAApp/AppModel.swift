@@ -112,6 +112,7 @@ final class AppModel {
         if !settings.finishedFirstRun { showHealthCheck = true }
         Task { await runHealthCheck() }
         Task { await followUpPublishedVideos() }
+        Task { await clearOldWorkingFiles() }
     }
 
     func runHealthCheck() async {

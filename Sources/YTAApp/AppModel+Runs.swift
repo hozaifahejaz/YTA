@@ -110,6 +110,9 @@ extension AppModel {
 
     private func finished(_ run: RunRecord, channel: ChannelRecord) {
         let folder = channel.folder
+        if run.stage == .finished || run.stage == .awaitingApproval || run.stage == .failed {
+            recordSpend(run, channel: channel)
+        }
         switch run.stage {
         case .awaitingApproval:
             let summary = RunStore(folder: folder).draft(for: run)?.summary ?? "Draft ready"

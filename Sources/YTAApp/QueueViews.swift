@@ -111,6 +111,10 @@ private struct VideoRowView: View {
             if expanded {
                 VideoSettingsBar(video: video)
                     .padding(.horizontal, Spacing.l)
+                Text("Estimate: \(model.estimate(for: video).summary)")
+                    .font(Typography.caption)
+                    .foregroundStyle(Palette.textTertiary)
+                    .padding(.horizontal, Spacing.l)
                 NodeCanvasView(
                     list: video.row,
                     selectedID: model.selectedNodeID,

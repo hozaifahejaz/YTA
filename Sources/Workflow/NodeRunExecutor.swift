@@ -142,11 +142,7 @@ public struct NodeRunExecutor: StageExecutor {
     }
 
     var needsApproval: Bool {
-        switch node.approval {
-        case .always: true
-        case .never: false
-        case .byDial: context.automation == .approveEvery
-        }
+        AutomationPolicy.needsApproval(type: node.type, approval: node.approval, automation: context.automation, inVideo: context.video != nil)
     }
 
     // MARK: Stages
@@ -218,6 +214,7 @@ public struct NodeRunExecutor: StageExecutor {
         let title = node.title
         let report = context.onProgress
         let outcome = try await runner.run(request) { report("\(title): \($0)") }
+        UsageLog.append(outcome.usage, run: run, folder: folder)
         try folder.writeJSON(StoredOutcome(text: outcome.text, structured: outcome.structured, usage: outcome.usage), to: "\(run.folder)/outcome.json")
     }
 

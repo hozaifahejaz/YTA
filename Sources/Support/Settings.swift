@@ -87,6 +87,21 @@ public struct EngineSettings: Codable, Sendable, Equatable {
     }
 }
 
+/// Spend caps that stop the queue (section 5.9). Nil means no cap.
+public struct CostCaps: Codable, Sendable, Equatable {
+    public var perVideoUSD: Double?
+    public var perDayUSD: Double?
+    public var perVideoVoiceCharacters: Int?
+    public var perDayVoiceCharacters: Int?
+
+    public init(perVideoUSD: Double? = nil, perDayUSD: Double? = nil, perVideoVoiceCharacters: Int? = nil, perDayVoiceCharacters: Int? = nil) {
+        self.perVideoUSD = perVideoUSD
+        self.perDayUSD = perDayUSD
+        self.perVideoVoiceCharacters = perVideoVoiceCharacters
+        self.perDayVoiceCharacters = perDayVoiceCharacters
+    }
+}
+
 public struct AppSettings: Codable, Sendable, Equatable {
     public static let currentSchemaVersion = 1
 
@@ -103,6 +118,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var finishedFirstRun: Bool
     /// When a same-name channel counts as only a small overlap (section 7.3, step 4).
     public var nameOverlap: NameOverlapThresholds
+    public var caps: CostCaps
 
     public init() {
         schemaVersion = Self.currentSchemaVersion
@@ -114,11 +130,12 @@ public struct AppSettings: Codable, Sendable, Equatable {
         clearWorkingFilesAfterDays = nil
         finishedFirstRun = false
         nameOverlap = NameOverlapThresholds()
+        caps = CostCaps()
     }
 
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, engines, storagePath, imageRoute, automationDefault, defaultWriter, clearWorkingFilesAfterDays, finishedFirstRun
-        case nameOverlap
+        case nameOverlap, caps
     }
 
     /// Missing keys fall back to defaults, so older files keep loading.
@@ -136,6 +153,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         defaultWriter = (try? c.decodeIfPresent(EngineID.self, forKey: .defaultWriter)) ?? .codex
         clearWorkingFilesAfterDays = try c.decodeIfPresent(Int.self, forKey: .clearWorkingFilesAfterDays)
         finishedFirstRun = try c.decodeIfPresent(Bool.self, forKey: .finishedFirstRun) ?? false
+        caps = (try? c.decodeIfPresent(CostCaps.self, forKey: .caps)) ?? CostCaps()
     }
 
     public func engine(_ id: EngineID) -> EngineSettings {

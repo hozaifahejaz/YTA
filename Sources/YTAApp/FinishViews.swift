@@ -54,6 +54,23 @@ extension AppModel {
         NSWorkspace.shared.activateFileViewerSelecting([url])
     }
 
+    var makesShorts: Bool {
+        _ = diskRevision
+        guard let folder = selectedChannel?.folder else { return false }
+        return WorkflowStore(folder: folder).makesShorts
+    }
+
+    func setMakesShorts(_ on: Bool) {
+        guard let folder = selectedChannel?.folder else { return }
+        do {
+            try WorkflowStore(folder: folder).setMakesShorts(on)
+            diskRevision += 1
+            note(on ? "New videos will get a Shorts step" : "New videos won't get a Shorts step")
+        } catch {
+            report(error)
+        }
+    }
+
     func refreshVideos() {
         loadSetupRow()
         diskRevision += 1

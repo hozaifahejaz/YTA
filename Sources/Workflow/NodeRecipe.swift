@@ -52,6 +52,7 @@ public enum NodeRecipes {
         case "thumbnailStyle": return ThumbnailStyleRecipe()
         case "thumbnails": return ThumbnailsRecipe()
         case "kit": return KitRecipe()
+        case "shorts": return ShortsRecipe()
         case "cutReview": return CutReviewRecipe()
         case "render": return RenderRecipe()
         case "finalCheck": return FinalCheckRecipe()

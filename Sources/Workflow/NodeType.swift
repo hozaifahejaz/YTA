@@ -181,6 +181,9 @@ public enum NodeRegistry {
                  checks: ["No black or frozen frames", "-14 LUFS, -1 dBTP", "Captions in sync"]),
         NodeType(id: "thumbnails", title: "Thumbnails", symbol: "photo.on.rectangle.angled", worker: .llm,
                  summary: "3 to 5 thumbnails.", inputs: ["script.md"], outputs: ["thumbnails.json"]),
+        NodeType(id: "shorts", title: "Shorts", symbol: "rectangle.portrait.on.rectangle.portrait", worker: .llm,
+                 summary: "1 to 3 vertical Shorts cut from this video.",
+                 inputs: ["script.beats.json", "audio/timings.json", "media.json"], outputs: ["shorts.json"]),
         NodeType(id: "kit", title: "Kit", symbol: "doc.richtext", worker: .app, summary: "YouTube Kit.docx and credits.",
                  inputs: ["qc.json", "ledger.json", "thumbnails.json"], outputs: ["kit.json"]),
     ]

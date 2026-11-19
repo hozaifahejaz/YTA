@@ -289,8 +289,9 @@ struct ChannelInspector: View {
                 Picker("Automation", selection: Binding(get: { channel.manifest.automation }, set: { value in model.updateManifest { $0.automation = value } })) {
                     ForEach(AutomationLevel.allCases) { Text($0.title).tag($0) }
                 }
+                Toggle("Cut Shorts from each video", isOn: Binding(get: { model.makesShorts }, set: { model.setMakesShorts($0) }))
             } footer: {
-                Text("The final check before a video is finished always runs.")
+                Text("The final check before a video is finished always runs. Shorts are 1 to 3 vertical cuts of the narration, each with its own folder and kit.")
             }
 
             Section {

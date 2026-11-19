@@ -50,6 +50,8 @@ public struct VideoFile: Codable, Equatable, Sendable, Identifiable {
     public var publishedAt: Date?
     /// When the bulky working files were cleared (section 5.9, Disk).
     public var workingFilesClearedAt: Date?
+    /// For a Short cut from a long video: that video's id.
+    public var parentID: String?
 
     public var working: String { "\(ChannelLayout.videos)/\(folderName)/\(VideoStore.workingFolder)" }
     public func path(_ relative: String) -> String { "\(working)/\(relative)" }

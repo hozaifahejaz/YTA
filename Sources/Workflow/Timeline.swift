@@ -81,7 +81,7 @@ public struct TimelineRecipe: NodeRecipe {
         let music = style.music ? MusicLibrary(folder: folder).approved() : []
 
         let built = Self.build(video: video, shots: shots, plan: plan, ledger: ledger, timings: timings, style: style,
-                               music: music, vertical: false)
+                               music: music, vertical: video.settings.short)
         var copies: [String: String] = [:]
         if let track = built.track { copies[video.path(Self.musicPath(track))] = track.file }
         var summary = "\(built.timeline.clips.count) clips, \(built.timeline.captions.count) captions, \(Self.clock(built.timeline.duration))"

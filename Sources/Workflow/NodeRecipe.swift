@@ -40,6 +40,8 @@ public enum NodeRecipes {
         case "brand": return BrandRecipe()
         case "avatar": return AvatarRecipe()
         case "banner": return BannerRecipe()
+        case "setupKit": return SetupKitRecipe()
+        case "playbook": return PlaybookRecipe()
         default: return nil
         }
     }

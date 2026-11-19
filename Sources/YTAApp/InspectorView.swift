@@ -75,6 +75,10 @@ struct NodeInspector: View {
                 RunSection(node: node)
             }
 
+            if node.type == "setupKit", let checklist = model.setupChecklist() {
+                SetupChecklistView(checklist: checklist)
+            }
+
             if draft.value.engine != nil {
                 Section("Engine") {
                     Picker("Tool", selection: engineTool) {

@@ -1,0 +1,53 @@
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  core-linux:
+    name: Core tests (Linux)
+    runs-on: ubuntu-24.04
+    container: swift:6.2
+    steps:
+      - uses: actions/checkout@v4
+      - name: Test core modules
+        run: swift test
+
+  app-macos:
+    name: Build and test (macOS)
+    runs-on: macos-26
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Toolchain
+        run: |
+          sw_vers
+          swift --version
+      - name: Test
+        run: swift test
+      - name: Build app bundle
+        run: Scripts/build-app.sh
+      - name: Check the bundle starts
+        run: |
+          build/YTA.app/Contents/MacOS/YTA &
+          PID=$!
+          sleep 8
+          if kill -0 "$PID" 2>/dev/null; then
+            echo "YTA is running"
+            kill "$PID"
+          else
+            echo "YTA exited early" >&2
+            exit 1
+          fi
+      - name: Lint
+        run: swift format lint --recursive Sources Tests || true
+      - name: Zip app
+        run: ditto -c -k --keepParent build/YTA.app build/YTA.zip
+      - name: Upload app
+        uses: actions/upload-artifact@v4
+        with:
+          name: YTA
+          path: build/YTA.zip
+          retention-days: 14

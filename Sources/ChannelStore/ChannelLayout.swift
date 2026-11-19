@@ -31,6 +31,13 @@ public enum ChannelLayout {
         library, "library/music", "library/reference-scripts", runs, history, channelSkills, videos,
     ]
 
+    /// True for paths that belong to the channel rather than to one video's `Working files`.
+    public static func isChannelPath(_ relative: String) -> Bool {
+        let first = relative.split(separator: "/").first.map(String.init) ?? relative
+        return [manifest, agents, claude, queue, calendar, ".agents", ".claude", profile, brand, styles, setup, research,
+                workflow, library, runs, videos].contains(first)
+    }
+
     /// Files whose approved changes are kept in history (section 5.7).
     public static func isInstructionFile(_ relative: String) -> Bool {
         let path = relative.hasPrefix("./") ? String(relative.dropFirst(2)) : relative

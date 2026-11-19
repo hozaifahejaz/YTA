@@ -85,6 +85,12 @@ public struct YouTubeVideo: Codable, Equatable, Sendable {
         self.thumbnailURL = thumbnailURL
     }
 
+    /// Days since upload, from the date or from the page's "3 weeks ago".
+    public func ageDays(at now: Date) -> Int? {
+        if let date = publishedAt { return max(0, Int(now.timeIntervalSince(date) / 86_400)) }
+        return publishedText.flatMap(Parse.ageDays)
+    }
+
     /// Shorts are three minutes or less.
     public var isShort: Bool? { durationSeconds.map { $0 <= 180 } }
 }

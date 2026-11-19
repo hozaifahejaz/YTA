@@ -3,9 +3,9 @@ import ChannelStore
 
 /// The rows a channel starts with (section 5.1).
 public enum DefaultRows {
-    public static let newChannelSetup = ["niche", "name", "brand", "avatar", "banner", "voice", "editingStyle", "thumbnailStyle", "setupKit", "playbook"]
-    public static let importedChannelSetup = ["importLink", "snapshot", "analysis", "interview", "brand", "voice", "editingStyle", "thumbnailStyle", "playbook"]
-    public static let video = ["topic", "title", "brief", "researchNotes", "prompt", "script", "review", "narration", "shots", "media", "timeline", "cutReview", "render", "finalCheck", "thumbnails", "kit"]
+    public static let newChannelSetup = ["niche", "name", "brand", "avatar", "banner", "voice", "editingStyle", "thumbnailStyle", "setupKit", "playbook", "topicResearch"]
+    public static let importedChannelSetup = ["importLink", "snapshot", "analysis", "interview", "brand", "voice", "editingStyle", "thumbnailStyle", "playbook", "topicResearch"]
+    public static let video = ["brief", "researchNotes", "prompt", "script", "review", "narration", "shots", "media", "timeline", "cutReview", "render", "finalCheck", "thumbnails", "kit"]
 
     public static func setup(for origin: ChannelOrigin) -> NodeList {
         let ids = origin == .imported ? importedChannelSetup : newChannelSetup

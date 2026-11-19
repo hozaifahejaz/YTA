@@ -21,6 +21,8 @@ public struct RunContext: Sendable {
     public var http: HTTPClient
     /// Draws profile pictures and banners. Nil where there is no CoreGraphics.
     public var artwork: (any ArtworkRenderer)?
+    /// The video a video node belongs to. Its inputs and outputs live in its `Working files`.
+    public var video: VideoFile?
 
     public init(
         settings: AppSettings,
@@ -31,7 +33,8 @@ public struct RunContext: Sendable {
         onProgress: @escaping @Sendable (String) -> Void = { _ in },
         youtube: YouTubeService? = nil,
         http: HTTPClient = URLSessionHTTP(),
-        artwork: (any ArtworkRenderer)? = nil
+        artwork: (any ArtworkRenderer)? = nil,
+        video: VideoFile? = nil
     ) {
         self.settings = settings
         self.tools = tools
@@ -42,6 +45,13 @@ public struct RunContext: Sendable {
         self.youtube = youtube
         self.http = http
         self.artwork = artwork
+        self.video = video
+    }
+
+    /// A node's file path inside the channel: video files sit in the video's `Working files`.
+    public func path(_ relative: String) -> String {
+        guard let video, !ChannelLayout.isChannelPath(relative) else { return relative }
+        return video.path(relative)
     }
 }
 
@@ -140,7 +150,7 @@ public struct NodeRunExecutor: StageExecutor {
             if !node.inputs.isEmpty {
                 prompt += "\n## Files to use\n\n"
                 for input in node.inputs {
-                    if let text = try? folder.readText(input), !text.isEmpty {
+                    if let text = try? folder.readText(context.path(input)), !text.isEmpty {
                         prompt += "### \(input)\n\n\(text.prefix(40_000))\n\n"
                     } else {
                         prompt += "### \(input)\n\n(This file does not exist yet.)\n\n"

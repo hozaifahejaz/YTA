@@ -9,10 +9,10 @@ import Support
 
     @Test func defaultRowsMatchTheSpec() {
         #expect(DefaultRows.setup(for: .new).nodes.map(\.title) ==
-            ["Niche", "Name", "Brand", "Profile picture", "Banner", "Voice", "Editing style", "Thumbnail style", "Setup kit", "Playbook"])
+            ["Niche", "Name", "Brand", "Profile picture", "Banner", "Voice", "Editing style", "Thumbnail style", "Setup kit", "Playbook", "Topic research"])
         #expect(DefaultRows.setup(for: .imported).nodes.map(\.title) ==
-            ["Link", "Snapshot", "Analysis", "Your input", "Brand", "Voice", "Editing style", "Thumbnail style", "Playbook"])
-        #expect(DefaultRows.videoRow().nodes.count == 16)
+            ["Link", "Snapshot", "Analysis", "Your input", "Brand", "Voice", "Editing style", "Thumbnail style", "Playbook", "Topic research"])
+        #expect(DefaultRows.videoRow().nodes.count == 14)
     }
 
     @Test func llmNodesGetAnEngineAndAppNodesDoNot() {
@@ -36,7 +36,7 @@ import Support
         var row = setupRow()
         let kit = try #require(row.nodes.first { $0.type == "setupKit" })
         try row.remove(kit.id)
-        #expect(row.nodes.count == 9)
+        #expect(row.nodes.count == 10)
     }
 
     @Test func insertPlacesNodeAfterLastProducerOfItsInputs() throws {
@@ -72,7 +72,7 @@ import Support
         let row = try #require(workflow.setupRow())
         #expect(row.nodes.first?.state == .done)
         #expect(row.nextNode?.type == "name")
-        #expect(workflow.videoTemplate()?.nodes.count == 16)
+        #expect(workflow.videoTemplate()?.nodes.count == 14)
     }
 
     @Test func templatesRoundTrip() throws {

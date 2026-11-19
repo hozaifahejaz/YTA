@@ -26,7 +26,7 @@ extension AppModel {
         return RunStore(folder: folder).draft(for: run)
     }
 
-    func context(for record: ChannelRecord) -> RunContext {
+    func context(for record: ChannelRecord, node: Node? = nil) -> RunContext {
         RunContext(
             settings: settings,
             tools: health,
@@ -37,7 +37,8 @@ extension AppModel {
             },
             youtube: youtube,
             http: URLSessionHTTP(),
-            artwork: CoreGraphicsRenderer()
+            artwork: CoreGraphicsRenderer(),
+            video: node.flatMap { VideoStore(folder: record.folder).video(containing: $0.id) }
         )
     }
 
@@ -46,14 +47,14 @@ extension AppModel {
     }
 
     /// Starts a node in the selected channel.
-    func run(_ node: Node, note: String? = nil) {
-        guard let record = selectedChannel else { return }
+    func run(_ node: Node, note: String? = nil, in channel: ChannelRecord? = nil) {
+        guard let record = channel ?? selectedChannel else { return }
         guard canRun(node) else {
             report(YTAError(.checkFailed, "\(node.title) can't run yet.", suggestion: "Built-in steps arrive in later milestones. Custom steps run now."))
             return
         }
         guard runTasks[node.id] == nil else { return }
-        let driver = RunDriver(folder: record.folder, executor: NodeRunExecutor(node: node, context: context(for: record), note: note))
+        let driver = RunDriver(folder: record.folder, executor: NodeRunExecutor(node: node, context: context(for: record, node: node), note: note))
         setState(of: node.id, in: record.folder, to: .running, summary: "")
         launch(node.id, title: node.title, channel: record) { await driver.start(node) }
     }
@@ -61,14 +62,14 @@ extension AppModel {
     /// Approves the waiting draft, which writes it into the channel.
     func approve(_ node: Node) {
         guard let record = selectedChannel, let run = latestRun(for: node), run.stage == .awaitingApproval else { return }
-        let driver = RunDriver(folder: record.folder, executor: NodeRunExecutor(node: node, context: context(for: record)))
+        let driver = RunDriver(folder: record.folder, executor: NodeRunExecutor(node: node, context: context(for: record, node: node)))
         launch(node.id, title: node.title, channel: record) { await driver.resume(run, ownerApproved: true) }
     }
 
     /// Throws the waiting draft away. Nothing is written.
     func discard(_ node: Node) {
         guard let record = selectedChannel, let run = latestRun(for: node) else { return }
-        let driver = RunDriver(folder: record.folder, executor: NodeRunExecutor(node: node, context: context(for: record)))
+        let driver = RunDriver(folder: record.folder, executor: NodeRunExecutor(node: node, context: context(for: record, node: node)))
         _ = driver.cancel(run)
         setState(of: node.id, in: record.folder, to: .waiting, summary: nil)
         diskRevision += 1
@@ -121,16 +122,13 @@ extension AppModel {
             break
         }
         diskRevision += 1
+        if run.stage == .finished || run.stage == .awaitingApproval { advanceQueue(channel) }
     }
 
     /// Updates a node's state in any channel's row, on disk and on screen.
     func setState(of nodeID: String, in folder: ChannelFolder, to state: NodeState, summary: String?) {
-        let store = WorkflowStore(folder: folder)
-        guard var row = store.setupRow() else { return }
-        row.setState(nodeID, state, summary: summary)
-        if summary == nil, let i = row.index(of: nodeID) { row.nodes[i].resultSummary = nil }
         do {
-            try store.saveSetupRow(row)
+            try VideoStore.setState(nodeID, state, summary: summary, folder: folder)
         } catch {
             report(error)
         }
@@ -141,9 +139,11 @@ extension AppModel {
     func resumeInterruptedRuns() {
         for record in channels {
             let store = RunStore(folder: record.folder)
-            guard let row = WorkflowStore(folder: record.folder).setupRow() else { continue }
+            let setup = WorkflowStore(folder: record.folder).setupRow()
+            let videos = VideoStore(folder: record.folder).all()
             for run in store.unfinished() {
-                guard let node = row[run.nodeID], NodeRunExecutor.canRun(node) else {
+                let found = setup?[run.nodeID] ?? videos.lazy.compactMap { $0.row[run.nodeID] }.first
+                guard let node = found, NodeRunExecutor.canRun(node) else {
                     _ = RunDriver(folder: record.folder, executor: NodeRunExecutor(node: Node(type: run.nodeType, title: run.nodeTitle), context: context(for: record))).cancel(run)
                     continue
                 }
@@ -152,7 +152,7 @@ extension AppModel {
                     continue
                 }
                 note("Resuming \(node.title) in \(record.manifest.name)")
-                let driver = RunDriver(folder: record.folder, executor: NodeRunExecutor(node: node, context: context(for: record)))
+                let driver = RunDriver(folder: record.folder, executor: NodeRunExecutor(node: node, context: context(for: record, node: node)))
                 setState(of: node.id, in: record.folder, to: .running, summary: "")
                 launch(node.id, title: node.title, channel: record) { await driver.resume(run) }
             }

@@ -48,6 +48,11 @@ public struct QueueFile: Codable, Sendable, Equatable {
     public struct Item: Codable, Sendable, Equatable {
         public var id: String
         public var status: String
+
+        public init(id: String, status: String) {
+            self.id = id
+            self.status = status
+        }
     }
 
     public init() {}

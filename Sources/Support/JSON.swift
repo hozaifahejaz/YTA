@@ -60,6 +60,11 @@ public enum JSONValue: Codable, Equatable, Sendable {
         return nil
     }
 
+    public var arrayValue: [JSONValue]? {
+        if case .array(let value) = self { return value }
+        return nil
+    }
+
     public var doubleValue: Double? {
         if case .number(let value) = self { return value }
         return nil

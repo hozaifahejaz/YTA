@@ -357,6 +357,10 @@ struct RunSection: View {
                     Spacer()
                     Button("Stop") { model.stop(node) }
                 }
+            } else if let topics = model.pendingTopics(for: node) {
+                TopicPickView(node: node, file: topics)
+            } else if let script = model.pendingScript(for: node) {
+                ScriptDraftView(node: node, script: script.script, review: script.review)
             } else if let skills = model.pendingSkills(for: node) {
                 SkillReviewView(node: node, review: skills)
             } else if let niches = model.pendingNiches(for: node) {

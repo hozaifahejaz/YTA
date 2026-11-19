@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 1,
+  "note": "Starter list (section 8.2). Edit per channel in library/banned-phrases.json with \"add\" and \"remove\".",
+  "english": [
+    "delve", "delving", "tapestry", "testament to", "in today's fast-paced world", "in this day and age",
+    "it's important to note", "it is important to note", "it's worth noting", "buckle up", "without further ado",
+    "in this video", "in today's video", "welcome back to", "welcome to the channel", "hey guys",
+    "let's dive in", "let's dive into", "dive deep", "deep dive", "unlock the secrets", "unravel the mystery",
+    "the world of", "navigating the", "a journey through", "ever-evolving", "game-changer", "game changer",
+    "in conclusion", "to sum up", "in summary", "at the end of the day", "stay tuned", "smash that like button",
+    "don't forget to subscribe", "like and subscribe", "the rest is history", "little did they know",
+    "shrouded in mystery", "rich history", "stands as a", "serves as a reminder", "a symphony of",
+    "embark on", "realm of", "plethora", "myriad of", "furthermore", "moreover", "nevertheless"
+  ]
+}

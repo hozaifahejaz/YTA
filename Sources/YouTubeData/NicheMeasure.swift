@@ -106,7 +106,7 @@ public struct NicheMeasures: Codable, Equatable, Sendable {
         )
     }
 
-    static func median(_ values: [Int]) -> Int? {
+    public static func median(_ values: [Int]) -> Int? {
         guard !values.isEmpty else { return nil }
         let sorted = values.sorted()
         let middle = sorted.count / 2
@@ -196,5 +196,25 @@ extension PageReader {
             URLQueryItem(name: "search_query", value: query), URLQueryItem(name: "sp", value: "EgIQAQ=="),
         ]) else { return [] }
         return PageData.videos(from: data)
+    }
+}
+
+extension YouTubeService {
+    /// A channel and its latest uploads, for topic research (section 8.1, Collect).
+    public func recentUploads(channelID: String, limit: Int = 30) async throws -> (channel: YouTubeChannel, videos: [YouTubeVideo], source: DataSource) {
+        if let api = api(units: 3) {
+            do {
+                if let channel = try await api.channel(id: channelID), let uploads = channel.uploadsPlaylistID {
+                    let listed = try await api.uploadIDs(playlist: uploads, limit: limit)
+                    return (channel, try await api.videos(ids: listed.ids), .api)
+                }
+            } catch let error as YTAError where error.kind == .quotaExhausted {
+                // Fall through to pages.
+            }
+        }
+        guard let channel = try await reader.channel(id: channelID) else {
+            throw YTAError(.notFound, "The channel \(channelID) was not found.")
+        }
+        return (channel, Array(try await reader.recentUploads(of: channel).prefix(limit)), .page)
     }
 }

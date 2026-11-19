@@ -94,26 +94,7 @@ struct ChannelView: View {
     }
 
     private var videosSection: some View {
-        VStack(alignment: .leading, spacing: Spacing.s) {
-            SectionLabel("Videos", detail: "One row per video, newest first")
-            HStack(spacing: Spacing.m) {
-                SymbolTile("film.stack", size: 32)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text("No videos yet")
-                        .font(Typography.headline)
-                        .foregroundStyle(Palette.textPrimary)
-                    Text("The queue opens once the voice, editing style and playbook are set.")
-                        .font(Typography.callout)
-                        .foregroundStyle(Palette.textSecondary)
-                }
-                Spacer()
-                Button("Add Video") {}
-                    .disabled(true)
-                    .help("Available after channel setup")
-            }
-            .card()
-        }
-        .padding(.horizontal, Spacing.l)
+        QueueSection(channel: channel)
     }
 
     private func handle(_ node: Node, _ action: NodeAction) {

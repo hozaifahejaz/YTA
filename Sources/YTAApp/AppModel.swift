@@ -34,6 +34,11 @@ final class AppModel {
         didSet { if oldValue != selectedChannelID { channelSelectionChanged() } }
     }
     private(set) var setupRow: NodeList?
+    /// The selected channel's videos, in queue order.
+    private(set) var videos: [VideoFile] = []
+    var expandedVideoID: String?
+    /// Channels whose queue is running (by channel id).
+    var runningQueues: Set<String> = []
     var selectedNodeID: String?
     var searchText = ""
 
@@ -259,11 +264,17 @@ final class AppModel {
             try? store.installDefaults(origin: record.manifest.origin, nicheGiven: false)
         }
         setupRow = store.setupRow()
+        videos = VideoStore(folder: record.folder).all()
     }
 
     var selectedNode: Node? {
         guard let id = selectedNodeID else { return nil }
-        return setupRow?[id]
+        return setupRow?[id] ?? videos.lazy.compactMap { $0.row[id] }.first
+    }
+
+    /// The video whose row holds this node, if any.
+    func video(containing nodeID: String) -> VideoFile? {
+        videos.first { $0.row[nodeID] != nil }
     }
 
     func selectNode(at index: Int) {
@@ -272,9 +283,17 @@ final class AppModel {
         showInspector = true
     }
 
-    private func mutateRow(_ change: (inout NodeList) throws -> Void) {
-        guard let record = selectedChannel, var row = setupRow else { return }
+    /// Changes the row that holds `nodeID`: a video's row, or the setup row.
+    private func mutateRow(containing nodeID: String? = nil, _ change: (inout NodeList) throws -> Void) {
+        guard let record = selectedChannel else { return }
         do {
+            if let nodeID, var video = video(containing: nodeID) {
+                try change(&video.row)
+                try VideoStore(folder: record.folder).save(video)
+                loadSetupRow()
+                return
+            }
+            guard var row = setupRow else { return }
             try change(&row)
             try WorkflowStore(folder: record.folder).saveSetupRow(row)
             setupRow = row
@@ -286,7 +305,7 @@ final class AppModel {
     /// Saves the owner's edits to a node. Only editable fields are taken, so a stale
     /// inspector copy never overwrites the state a run has set.
     func updateNode(_ edited: Node) {
-        mutateRow { row in
+        mutateRow(containing: edited.id) { row in
             guard var current = row[edited.id] else { return }
             current.title = edited.title
             current.engine = edited.engine
@@ -298,22 +317,28 @@ final class AppModel {
         }
     }
 
-    func insertCustomNode(after anchor: String?) {
+    func insertCustomNode(after anchor: String?, inVideo videoID: String? = nil) {
+        let inVideo = videoID != nil || anchor.flatMap { video(containing: $0) } != nil
+        let suffix = Identifier.make().suffix(6)
         let node = Node(
             type: NodeType.custom.id,
             title: "Custom step",
             engine: EngineChoice(tool: .claude),
             promptTemplate: "",
-            outputs: ["profile/custom-\(Identifier.make().suffix(6)).md"],
+            outputs: [inVideo ? "notes-\(suffix).md" : "profile/custom-\(suffix).md"],
             approval: .always
         )
-        mutateRow { $0.insert(node, after: anchor) }
+        if let videoID, anchor == nil, let video = videos.first(where: { $0.id == videoID }) {
+            mutateRow(containing: video.row.nodes.first?.id) { _ = $0.insert(node, after: nil) }
+        } else {
+            mutateRow(containing: anchor) { _ = $0.insert(node, after: anchor) }
+        }
         selectedNodeID = node.id
         showInspector = true
     }
 
     func requestRemove(_ node: Node) {
-        guard let row = setupRow else { return }
+        guard let row = video(containing: node.id)?.row ?? setupRow else { return }
         if row.nodesBroken(byRemoving: node.id).isEmpty {
             remove(node, force: false)
         } else {
@@ -322,13 +347,13 @@ final class AppModel {
     }
 
     func remove(_ node: Node, force: Bool) {
-        mutateRow { try $0.remove(node.id, force: force) }
+        mutateRow(containing: node.id) { try $0.remove(node.id, force: force) }
         if selectedNodeID == node.id { selectedNodeID = nil }
         pendingRemoval = nil
     }
 
     func redo(_ node: Node) {
-        mutateRow { $0.redo(node.id) }
+        mutateRow(containing: node.id) { $0.redo(node.id) }
         note("\(node.title) will run again. Later steps that used it are marked out of date.")
     }
 
@@ -381,7 +406,7 @@ final class AppModel {
         for path in changed {
             guard let relative = folder.relativePath(of: URL(fileURLWithPath: path)),
                   !relative.hasPrefix(ChannelLayout.history) else { continue }
-            if relative == ChannelLayout.setupWorkflow { reloadRow = true }
+            if relative == ChannelLayout.setupWorkflow || relative == ChannelLayout.queue || relative.hasSuffix("/\(VideoStore.file)") { reloadRow = true }
             if ChannelLayout.isInstructionFile(relative), (try? folder.noteExternalChange(relative)) != nil {
                 note("Saved a history copy of \(relative) after an outside edit")
             }

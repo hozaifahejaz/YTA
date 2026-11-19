@@ -1,6 +1,9 @@
 import Brand
 import ChannelStore
 import Engines
+#if canImport(CoreGraphics)
+import CoreGraphics
+#endif
 import Foundation
 import Support
 import Testing

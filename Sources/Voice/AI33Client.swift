@@ -13,6 +13,19 @@ public struct VoiceOption: Codable, Equatable, Sendable, Identifiable {
     public var accent: String?
     public var category: String?
     public var previewURL: String?
+
+    public init(id: String, name: String, provider: String, language: String? = nil, gender: String? = nil, age: String? = nil,
+                accent: String? = nil, category: String? = nil, previewURL: String? = nil) {
+        self.id = id
+        self.name = name
+        self.provider = provider
+        self.language = language
+        self.gender = gender
+        self.age = age
+        self.accent = accent
+        self.category = category
+        self.previewURL = previewURL
+    }
 }
 
 /// A speech task as ai33pro reports it.
@@ -30,6 +43,9 @@ public struct SpeechTask: Equatable, Sendable {
 public struct AI33Client: Sendable {
     public static let base = URL(string: "https://api.ai33.pro")!
     public static let providers = ["elevenlabs", "minimax", "clone", "edge", "kokoro", "vbee", "fishaudio"]
+    static let browserAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/18.0 Safari/605.1.15"
+    /// The narrator Huzaifa uses in every video.
+    public static let defaultNarrator = "elevenlabs_JoUzH3pAmeGSSiUJSvF1"
     let key: String
     let http: HTTPClient
     let rule: VoiceLock.Rule?
@@ -89,10 +105,9 @@ public struct AI33Client: Sendable {
     /// Starts one speech task. Refused before any network call unless the v4 rule is met.
     public func speak(_ request: SpeechRequest) async throws -> String {
         let checked = try VoiceGate.prepare(request, rule: rule)
-        let form = FormData(checked.fields)
         var headers = headers
-        headers["Content-Type"] = form.contentType
-        let value = try json(try await http.post(Self.base.appendingPathComponent("v3/text-to-speech"), headers: headers, body: form.body),
+        headers["Content-Type"] = "application/json"
+        let value = try json(try await http.post(Self.base.appendingPathComponent("v3/text-to-speech"), headers: headers, body: checked.jsonBody),
                              what: "the speech request")
         guard let id = (value["task_id"] ?? value["data"]?["task_id"] ?? value["id"])?.stringValue else {
             throw YTAError(.fileFormat, "ai33pro did not return a task id.")
@@ -108,6 +123,10 @@ public struct AI33Client: Sendable {
             for (key, item) in object { if let text = item.stringValue { fields[key] = text } }
             if case .object(let metadata)? = object["metadata"] {
                 for (key, item) in metadata { if let text = item.stringValue { fields[key] = text } }
+                // `metadata.data.model_id` says which model made the audio: the v4 check reads it.
+                if case .object(let data)? = metadata["data"] {
+                    for (key, item) in data { if let text = item.stringValue { fields[key] = text } }
+                }
             }
         }
         let status = (fields["status"] ?? "").lowercased()
@@ -146,7 +165,8 @@ public struct AI33Client: Sendable {
     /// Downloads at once, because result links may expire.
     public func download(_ url: String) async throws -> Data {
         guard let address = URL(string: url) else { throw YTAError(.fileFormat, "ai33pro gave a broken audio link.") }
-        let response = try await http.get(address, headers: [:])
+        // The result links refuse requests that don't look like a browser.
+        let response = try await http.get(address, headers: ["User-Agent": Self.browserAgent])
         guard (200..<300).contains(response.status), !response.data.isEmpty else {
             throw YTAError(.network, "The audio could not be downloaded.")
         }

@@ -1,10 +1,11 @@
 import Foundation
 import Support
 
-/// What makes a speech request "v4" (section 8.3). The owner has not yet said where v4 is
-/// chosen in ai33pro, so the rule is undefined and no speech can be generated. When he does,
-/// `current` gets the rule here, in code, and nowhere else. There is no setting, prompt or
-/// fallback that bypasses it: every request goes through `VoiceGate`.
+/// What makes a speech request "v4" (section 8.3). Huzaifa confirmed on 2026-11-19 that ai33pro makes
+/// ElevenLabs v4 only when the request to `v3/text-to-speech` carries `model_id: "eleven_v4"`, and that the
+/// finished task reports the model in `metadata.data.model_id`. Without the field it silently makes
+/// `eleven_multilingual_v2`. The rule lives here, in code, and nowhere else. There is no setting, prompt or
+/// fallback that bypasses it: every request goes through `VoiceGate`, and a result without the v4 marker is thrown away.
 public enum VoiceLock {
     public struct Rule: Sendable, Equatable {
         /// Form fields the request must carry with exactly these values, for example a model field.
@@ -29,8 +30,11 @@ public enum VoiceLock {
         public var isMeaningful: Bool { !requiredFields.isEmpty || voiceIDPattern != nil }
     }
 
-    /// Undefined until v4 is confirmed. Do not set this to anything that does not pin v4.
-    public static let current: Rule? = nil
+    /// v4 only: the model field on every request, ElevenLabs voices only, and the finished task must say eleven_v4.
+    public static let current: Rule? = Rule(
+        requiredFields: ["model_id": "eleven_v4"],
+        voiceIDPattern: "^elevenlabs_",
+        resultMarker: (key: "model_id", value: "eleven_v4"))
 
     public static let lockedMessage = "Voice is locked until v4 is confirmed"
 }
@@ -55,6 +59,16 @@ public struct SpeechRequest: Sendable, Equatable {
         self.fileName = fileName
         self.pronunciationDictionaryID = pronunciationDictionaryID
         self.extraFields = extraFields
+    }
+
+    /// The JSON body ai33pro's `v3/text-to-speech` takes.
+    public var jsonBody: Data {
+        var body: [String: JSONValue] = ["text": .string(text), "voice_id": .string(voiceID), "with_transcript": .bool(withTranscript)]
+        if let fileName { body["file_name"] = .string(fileName) }
+        if let pronunciationDictionaryID { body["pronunciation_dictionary_id"] = .string(pronunciationDictionaryID) }
+        if abs(speed - 1) > 0.001 { body["speed"] = .number(min(1.5, max(0.5, speed))) }
+        for (key, value) in extraFields { body[key] = .string(value) }
+        return (try? JSONEncoder().encode(JSONValue.object(body))) ?? Data()
     }
 
     public var fields: [(String, String)] {
@@ -92,7 +106,10 @@ public enum VoiceGate {
 
     /// Checks the finished task, when the service says which model made it.
     public static func checkResult(_ task: [String: String], rule: VoiceLock.Rule) throws {
-        guard let marker = rule.resultMarker, let reported = task[marker.key] else { return }
+        guard let marker = rule.resultMarker else { return }
+        guard let reported = task[marker.key] else {
+            throw YTAError(.checkFailed, "ai33pro did not say which model made this audio, so it can't be shown to be \(marker.value). The audio was thrown away.")
+        }
         if reported != marker.value {
             throw YTAError(.checkFailed, "ai33pro reported \(marker.key) \(reported), not \(marker.value). The audio was thrown away.")
         }

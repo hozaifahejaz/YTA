@@ -41,6 +41,13 @@ public struct VoicePickRecipe: NodeRecipe {
         if let pattern = context.voiceRule?.voiceIDPattern {
             voices = voices.filter { $0.id.range(of: pattern, options: .regularExpression) != nil }
         }
+        // The owner's own narrator comes first and is the starting choice.
+        let narrator = voices.first { $0.id == AI33Client.defaultNarrator }
+            ?? VoiceOption(id: AI33Client.defaultNarrator, name: "Your narrator", provider: "elevenlabs", language: language)
+        if context.voiceRule?.voiceIDPattern.map({ narrator.id.range(of: $0, options: .regularExpression) != nil }) ?? true {
+            voices.removeAll { $0.id == narrator.id }
+            voices.insert(narrator, at: 0)
+        }
         guard !voices.isEmpty else { throw YTAError(.notFound, "ai33pro listed no voices for \(manifest.language).") }
         try folder.writeJSON(voices, to: "\(run.folder)/voices.json")
         let first = voices[0]

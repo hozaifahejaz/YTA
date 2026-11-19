@@ -28,8 +28,33 @@ final class RecordingHTTP: HTTPClient, @unchecked Sendable {
 }
 
 @Suite struct VoiceLockTests {
-    @Test func theShippedLockIsUndefined() {
-        #expect(VoiceLock.current == nil)
+    @Test func theShippedLockPinsElevenV4() throws {
+        let rule = try #require(VoiceLock.current)
+        #expect(rule.isMeaningful)
+        #expect(rule.requiredFields == ["model_id": "eleven_v4"])
+        #expect(rule.resultMarker?.key == "model_id" && rule.resultMarker?.value == "eleven_v4")
+        // Only ElevenLabs voices can be v4.
+        #expect(throws: YTAError.self) { try VoiceGate.prepare(SpeechRequest(text: "Hi", voiceID: "minimax_anna"), rule: rule) }
+        let prepared = try VoiceGate.prepare(SpeechRequest(text: "Hi", voiceID: AI33Client.defaultNarrator, fileName: "s01"), rule: rule)
+        let body = try JSONDecoder().decode(JSONValue.self, from: prepared.jsonBody)
+        #expect(body["model_id"] == .string("eleven_v4"))
+        #expect(body["voice_id"] == .string("elevenlabs_JoUzH3pAmeGSSiUJSvF1"))
+        #expect(body["with_transcript"] == .bool(true))
+        #expect(body["file_name"] == .string("s01"))
+        #expect(body["speed"] == nil)
+    }
+
+    @Test func theRealTaskShapeIsCheckedForV4() async throws {
+        let http = RecordingHTTP()
+        let client = AI33Client(key: "k", http: http, rule: VoiceLock.current)
+        _ = try await client.speak(SpeechRequest(text: "Hello", voiceID: AI33Client.defaultNarrator))
+        #expect(http.posts.first?.1.contains(#""model_id":"eleven_v4""#) == true)
+        http.taskFields = #"{"status":"done","metadata":{"audio_url":"https://cdn.example/a.mp3","json_url":"https://cdn.example/a.json","data":{"model_id":"eleven_multilingual_v2"}}}"#
+        await #expect(throws: YTAError.self) { _ = try await client.wait(for: "t1", every: 0.01) }
+        http.taskFields = #"{"status":"done","metadata":{"audio_url":"https://cdn.example/a.mp3"}}"#
+        await #expect(throws: YTAError.self) { _ = try await client.wait(for: "t1", every: 0.01) }
+        http.taskFields = #"{"status":"done","metadata":{"audio_url":"https://cdn.example/a.mp3","data":{"model_id":"eleven_v4"}}}"#
+        #expect(try await client.wait(for: "t1", every: 0.01).audioURL == "https://cdn.example/a.mp3")
     }
 
     @Test func aRequestWithoutTheV4MarkerNeverReachesTheNetwork() async throws {
@@ -53,7 +78,7 @@ final class RecordingHTTP: HTTPClient, @unchecked Sendable {
         let client = AI33Client(key: "k", http: http, rule: rule)
         let id = try await client.speak(SpeechRequest(text: "Hello", voiceID: "elevenlabs_tod"))
         #expect(id == "t1")
-        #expect(http.posts.first?.1.contains("name=\"model\"\r\n\r\nv4") == true)
+        #expect(http.posts.first?.1.contains(#""model":"v4""#) == true)
 
         http.taskFields = #"{"status":"done","model":"v2","metadata":{"audio_url":"https://cdn.example/a.mp3"}}"#
         var wrong: YTAError?

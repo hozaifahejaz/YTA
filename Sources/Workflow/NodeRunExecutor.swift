@@ -1,6 +1,7 @@
 import ChannelStore
 import Engines
 import Foundation
+import Brand
 import Support
 import YouTubeData
 
@@ -18,6 +19,8 @@ public struct RunContext: Sendable {
     public var youtube: YouTubeService?
     /// Plain HTTP for domain and social hints.
     public var http: HTTPClient
+    /// Draws profile pictures and banners. Nil where there is no CoreGraphics.
+    public var artwork: (any ArtworkRenderer)?
 
     public init(
         settings: AppSettings,
@@ -27,7 +30,8 @@ public struct RunContext: Sendable {
         makeRunner: (@Sendable (EngineID, Bool) async throws -> EngineRunner)? = nil,
         onProgress: @escaping @Sendable (String) -> Void = { _ in },
         youtube: YouTubeService? = nil,
-        http: HTTPClient = URLSessionHTTP()
+        http: HTTPClient = URLSessionHTTP(),
+        artwork: (any ArtworkRenderer)? = nil
     ) {
         self.settings = settings
         self.tools = tools
@@ -37,6 +41,7 @@ public struct RunContext: Sendable {
         self.onProgress = onProgress
         self.youtube = youtube
         self.http = http
+        self.artwork = artwork
     }
 }
 

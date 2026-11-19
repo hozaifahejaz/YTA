@@ -355,6 +355,12 @@ struct RunSection: View {
                 }
             } else if let names = model.pendingNames(for: node) {
                 NamePickerView(node: node, file: names)
+            } else if let brand = model.pendingBrand(for: node) {
+                BrandBoardsView(node: node, file: brand)
+            } else if let avatars = model.pendingAvatars(for: node) {
+                AvatarPickerView(node: node, set: avatars)
+            } else if let banner = model.bannerResult(for: node) {
+                BannerPreviewView(node: node, result: banner.0, run: banner.1)
             } else if let run, run.stage == .awaitingApproval, let draft = model.draft(for: run) {
                 ForEach(draft.files.keys.sorted(), id: \.self) { file in
                     VStack(alignment: .leading, spacing: Spacing.xs) {

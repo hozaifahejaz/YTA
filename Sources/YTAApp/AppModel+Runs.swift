@@ -3,6 +3,7 @@ import Engines
 import Foundation
 import Support
 import UserNotifications
+import Artwork
 import Workflow
 import YouTubeData
 
@@ -35,7 +36,8 @@ extension AppModel {
                 Task { @MainActor in self?.progress(line) }
             },
             youtube: youtube,
-            http: URLSessionHTTP()
+            http: URLSessionHTTP(),
+            artwork: CoreGraphicsRenderer()
         )
     }
 

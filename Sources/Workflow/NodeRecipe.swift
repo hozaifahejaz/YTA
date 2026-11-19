@@ -37,6 +37,9 @@ public enum NodeRecipes {
         if node.isCustom { return node.outputs.isEmpty ? nil : CustomRecipe() }
         switch node.type {
         case "name": return NameRecipe()
+        case "brand": return BrandRecipe()
+        case "avatar": return AvatarRecipe()
+        case "banner": return BannerRecipe()
         default: return nil
         }
     }

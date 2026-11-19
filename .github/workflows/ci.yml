@@ -27,6 +27,14 @@ jobs:
             exit 1
           fi
 
+  mcp-coverage:
+    name: Every feature reachable through MCP
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check AppModel methods against MCP actions
+        run: python3 Scripts/check-control-coverage.py
+
   app-command-line-tools:
     name: Build with Command Line Tools only (macOS)
     runs-on: macos-26

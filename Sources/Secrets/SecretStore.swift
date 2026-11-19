@@ -10,6 +10,8 @@ public enum SecretKey: String, CaseIterable, Sendable, Identifiable {
     case smithsonian
     case rijksmuseum
     case europeana
+    /// The token AI tools send to YTA's MCP server. Made by YTA, not a service key.
+    case controlToken
 
     public var id: String { rawValue }
 
@@ -22,6 +24,7 @@ public enum SecretKey: String, CaseIterable, Sendable, Identifiable {
         case .smithsonian: "Smithsonian"
         case .rijksmuseum: "Rijksmuseum"
         case .europeana: "Europeana"
+        case .controlToken: "YTA MCP token"
         }
     }
 
@@ -34,6 +37,7 @@ public enum SecretKey: String, CaseIterable, Sendable, Identifiable {
         case .smithsonian: "Museum images and records."
         case .rijksmuseum: "Museum images."
         case .europeana: "European archive media."
+        case .controlToken: "Lets AI tools on this Mac control YTA."
         }
     }
 
@@ -46,8 +50,12 @@ public enum SecretKey: String, CaseIterable, Sendable, Identifiable {
         case .smithsonian: URL(string: "https://api.data.gov/signup/")!
         case .rijksmuseum: URL(string: "https://data.rijksmuseum.nl/")!
         case .europeana: URL(string: "https://pro.europeana.eu/pages/get-api")!
+        case .controlToken: URL(string: "https://modelcontextprotocol.io")!
         }
     }
+
+    /// Keys for outside services, which the owner pastes in Settings, Keys.
+    public static var serviceKeys: [SecretKey] { allCases.filter { $0 != .controlToken } }
 }
 
 public protocol SecretStore: Sendable {

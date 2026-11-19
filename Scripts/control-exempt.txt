@@ -1,0 +1,20 @@
+# AppModel methods with no MCP action, each with the reason.
+# Scripts/check-control-coverage.py fails CI for any AppModel method that is in neither
+# this list nor an action in Sources/YTAApp/AppModel+Control.swift. Keep this list short:
+# only internal plumbing and views' drawing helpers belong here, never a feature.
+
+adoptChosenName        # internal: runs after the name step writes; pick_name triggers it
+advanceQueue           # internal: the queue calls it after each step; start_queue starts it
+channelImage           # draws an image for a view; list_files and read_file reach the same files
+context                # internal: builds a run's context
+importVideoFile        # opens a file picker; add_video takes script text and add_videos takes a CSV list
+maintainTools          # internal: the daily launch check; check_tool_updates and update_tool do the same on demand
+openHomebrewInstaller  # install_tool with tool homebrew calls it
+recordSpend            # internal: records spend after a run; get_spend reads it
+refreshVideos          # internal: redraw after a write; refresh does the same
+requestRemove          # asks the owner to confirm in the window; remove_step takes force instead
+resumeInterruptedRuns  # internal: runs once at launch
+revealVideo            # same as revealVideoFolder, which reveal_video calls
+setState               # internal: runs set step states; run_step, approve_step and discard_step change them
+thumbnailImage         # draws an image for a view; get_step lists thumbnails and read_file reaches them
+waitingRun             # internal helper behind every pending choice in get_step

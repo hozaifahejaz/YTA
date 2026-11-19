@@ -14,6 +14,7 @@ struct SettingsView: View {
             Tab("Keys", systemImage: "key") { KeysSettings() }
             Tab("Storage", systemImage: "externaldrive") { StorageSettings() }
             Tab("Automation", systemImage: "dial.medium") { AutomationSettings() }
+            Tab("MCP", systemImage: "point.3.connected.trianglepath.dotted") { ControlSettingsView() }
         }
         .frame(width: 560, height: 520)
     }
@@ -73,7 +74,7 @@ struct KeysSettings: View {
     var body: some View {
         Form {
             Section {
-                ForEach(SecretKey.allCases) { key in
+                ForEach(SecretKey.serviceKeys) { key in
                     KeyRow(key: key)
                 }
             } footer: {
@@ -281,6 +282,73 @@ private struct CapField: View {
                     .frame(width: 100)
                 Text(unit).font(Typography.caption).foregroundStyle(Palette.textTertiary)
             }
+        }
+    }
+}
+
+/// The MCP server: lets Claude Code and other AI tools on this Mac control everything in YTA.
+struct ControlSettingsView: View {
+    @Environment(AppModel.self) private var model
+    @StateObject private var port = LocalState("")
+    @StateObject private var adding = LocalState(false)
+
+    var body: some View {
+        Form {
+            Section {
+                Toggle("Let AI tools on this Mac control YTA", isOn: Binding(
+                    get: { model.settings.control.enabled },
+                    set: { value in model.updateSettings { $0.control.enabled = value } }
+                ))
+                LabeledContent("Status") {
+                    Text(model.controlStatus)
+                        .font(Typography.callout)
+                        .foregroundStyle(Palette.textSecondary)
+                }
+                HStack {
+                    TextField("Port", text: $port.value, prompt: Text(String(ControlSettings.defaultPort)))
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 100)
+                        .onSubmit(savePort)
+                    Button("Use Port", action: savePort)
+                        .disabled(Int(port.value) == nil || Int(port.value) == model.settings.control.port)
+                }
+            } footer: {
+                Text("YTA listens on 127.0.0.1 only. Every request needs the token kept in your Keychain, and web pages are refused.")
+            }
+            Section("Connect") {
+                HStack {
+                    Button(adding.value ? "Adding…" : "Add to Claude Code") {
+                        adding.value = true
+                        Task {
+                            await model.addToClaudeCode()
+                            adding.value = false
+                        }
+                    }
+                    .disabled(adding.value || !model.settings.control.enabled)
+                    Button("Copy Setup Command") { copy { try model.claudeCodeSetupCommand() } }
+                    Button("Copy JSON Config") { copy { try model.controlClientConfig() } }
+                }
+                Button("Make a New Token", role: .destructive) { model.renewControlToken() }
+                    .help("Tools set up with the old token stop working until you add YTA again.")
+            }
+        }
+        .formStyle(.grouped)
+        .onAppear { port.value = String(model.settings.control.port) }
+    }
+
+    private func savePort() {
+        guard let value = Int(port.value), (1024...65535).contains(value) else { return }
+        model.updateSettings { $0.control.port = value }
+    }
+
+    private func copy(_ text: () throws -> String) {
+        do {
+            let value = try text()
+            NSPasteboard.general.clearContents()
+            NSPasteboard.general.setString(value, forType: .string)
+            model.note("Copied. It holds your YTA token, so paste it only into your own tools.")
+        } catch {
+            model.report(error)
         }
     }
 }

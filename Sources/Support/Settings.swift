@@ -102,6 +102,19 @@ public struct CostCaps: Codable, Sendable, Equatable {
     }
 }
 
+/// The MCP server that lets AI tools on this Mac control YTA. It listens on 127.0.0.1 only.
+public struct ControlSettings: Codable, Sendable, Equatable {
+    public var enabled: Bool
+    public var port: Int
+
+    public static let defaultPort = 47821
+
+    public init(enabled: Bool = true, port: Int = ControlSettings.defaultPort) {
+        self.enabled = enabled
+        self.port = port
+    }
+}
+
 public struct AppSettings: Codable, Sendable, Equatable {
     public static let currentSchemaVersion = 1
 
@@ -121,6 +134,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
     public var caps: CostCaps
     /// Install updates to the tools YTA drives on its own, once a day, when nothing is running.
     public var autoUpdateTools: Bool
+    public var control: ControlSettings
 
     public init() {
         schemaVersion = Self.currentSchemaVersion
@@ -134,11 +148,12 @@ public struct AppSettings: Codable, Sendable, Equatable {
         nameOverlap = NameOverlapThresholds()
         caps = CostCaps()
         autoUpdateTools = true
+        control = ControlSettings()
     }
 
     private enum CodingKeys: String, CodingKey {
         case schemaVersion, engines, storagePath, imageRoute, automationDefault, defaultWriter, clearWorkingFilesAfterDays, finishedFirstRun
-        case nameOverlap, caps, autoUpdateTools
+        case nameOverlap, caps, autoUpdateTools, control
     }
 
     /// Missing keys fall back to defaults, so older files keep loading.
@@ -158,6 +173,7 @@ public struct AppSettings: Codable, Sendable, Equatable {
         finishedFirstRun = try c.decodeIfPresent(Bool.self, forKey: .finishedFirstRun) ?? false
         caps = (try? c.decodeIfPresent(CostCaps.self, forKey: .caps)) ?? CostCaps()
         autoUpdateTools = (try? c.decodeIfPresent(Bool.self, forKey: .autoUpdateTools)) ?? true
+        control = (try? c.decodeIfPresent(ControlSettings.self, forKey: .control)) ?? ControlSettings()
     }
 
     public func engine(_ id: EngineID) -> EngineSettings {

@@ -6,7 +6,7 @@ import PackageDescription
 // The app, design system and canvas need SwiftUI and are added on macOS only.
 
 var products: [Product] = [
-    .library(name: "YTACore", targets: ["Support", "ChannelStore", "Workflow", "Secrets", "Engines", "YouTubeData", "Naming", "Brand", "Voice", "Media"]),
+    .library(name: "YTACore", targets: ["Support", "ChannelStore", "Workflow", "Secrets", "Engines", "YouTubeData", "Naming", "Brand", "Voice", "Media", "Control"]),
     .executable(name: "yta-engine-check", targets: ["EngineCheck"]),
     .executable(name: "yta-youtube-check", targets: ["YouTubeCheck"]),
 ]
@@ -22,6 +22,7 @@ var targets: [Target] = [
     .target(name: "Brand", dependencies: ["Support"]),
     .target(name: "Voice", dependencies: ["Support", "YouTubeData"]),
     .target(name: "Media", dependencies: ["Support", "ChannelStore", "YouTubeData"]),
+    .target(name: "Control", dependencies: ["Support"]),
     .executableTarget(name: "EngineCheck", dependencies: ["Support", "ChannelStore", "Workflow", "Engines"]),
     .executableTarget(name: "YouTubeCheck", dependencies: ["Support", "Secrets", "YouTubeData"]),
 
@@ -34,6 +35,7 @@ var targets: [Target] = [
     .testTarget(name: "YouTubeDataTests", dependencies: ["YouTubeData", "ChannelStore", "Support"]),
     .testTarget(name: "NamingTests", dependencies: ["Naming", "YouTubeData", "Support"]),
     .testTarget(name: "BrandTests", dependencies: ["Brand", "Support"]),
+    .testTarget(name: "ControlTests", dependencies: ["Control", "Support"]),
     .testTarget(name: "MediaTests", dependencies: ["Media", "ChannelStore", "YouTubeData", "Support"]),
 ]
 
@@ -47,7 +49,7 @@ targets += [
     .target(name: "MediaTools", dependencies: ["Voice", "Support"]),
     .executableTarget(
         name: "YTAApp",
-        dependencies: ["DesignSystem", "Canvas", "Workflow", "ChannelStore", "Engines", "Secrets", "Support", "YouTubeData", "Naming", "Brand", "Artwork", "Voice", "MediaTools", "Media"]
+        dependencies: ["DesignSystem", "Canvas", "Workflow", "ChannelStore", "Engines", "Secrets", "Support", "YouTubeData", "Naming", "Brand", "Artwork", "Voice", "MediaTools", "Media", "Control"]
     ),
 ]
 #endif

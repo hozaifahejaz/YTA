@@ -1,6 +1,7 @@
 import AppKit
 import ChannelStore
 import Engines
+import Control
 import Foundation
 import Observation
 import Secrets
@@ -66,6 +67,13 @@ final class AppModel {
 
     @ObservationIgnored private var watcher: ChannelWatcher?
 
+    // MARK: MCP
+
+    /// The MCP server AI tools use to control YTA (AppModel+Control).
+    @ObservationIgnored var controlServer: ControlHTTPServer?
+    var controlStatus = "Starting"
+    var controlActionCount = 0
+
     // MARK: YouTube data
 
     /// API units used today; shared with `yta-youtube-check`.
@@ -120,6 +128,7 @@ final class AppModel {
         Task { await followUpPublishedVideos() }
         Task { await clearOldWorkingFiles() }
         Task { await maintainTools() }
+        startControlServer()
     }
 
     func runHealthCheck() async {
@@ -145,6 +154,7 @@ final class AppModel {
         change(&copy)
         guard copy != settings else { return }
         let storageMoved = copy.storagePath != settings.storagePath
+        let controlChanged = copy.control != settings.control
         settings = copy
         do {
             try settingsStore.save(copy)
@@ -157,6 +167,7 @@ final class AppModel {
             selectedChannelID = nil
             reloadChannels()
         }
+        if controlChanged { startControlServer() }
     }
 
     // MARK: Channels

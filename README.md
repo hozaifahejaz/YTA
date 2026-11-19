@@ -41,6 +41,20 @@ The Command Line Tools do not include SwiftUI's macro plugin, so YTA never uses 
 
 Each channel is one folder that holds everything about it, including `AGENTS.md`, the instructions every engine reads first. The storage folder can be changed in Settings.
 
+## Controlling YTA from AI tools (MCP)
+
+YTA runs an MCP server on `127.0.0.1` (port 47821 by default) while it is open. Claude Code and other
+MCP clients can do everything the window can: create channels, run and approve steps, answer every choice,
+manage the queue, read and write channel files, install and update tools, and change settings.
+Open **Settings → MCP** and click **Add to Claude Code**, or copy the setup command or JSON config.
+Every request needs the token kept in the Keychain; web pages are refused. API keys are never readable.
+
+**Rule for new features:** every AppModel method must be reachable through an action in
+`Sources/YTAApp/AppModel+Control.swift`, or be listed in `Scripts/control-exempt.txt` with a reason.
+`Scripts/check-control-coverage.py` enforces this in CI and in `Scripts/test.sh`. New step types need
+nothing: `run_step`, `get_step` and `approve_step` work for every node type, and new settings fields are
+reached by `update_settings`.
+
 ## Layout
 
 | Module | Role |

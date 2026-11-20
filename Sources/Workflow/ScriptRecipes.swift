@@ -352,13 +352,24 @@ public struct ScriptRecipe: NodeRecipe {
         let refined = (try? folder.readText(video.path("refined-prompt.md"))) ?? ""
 
         var beats = Self.beats(value, rate: style.speakingRate)
-        let reviewer = Self.reviewer(for: writer.tool, settings: context.settings)
+        var reviewers = Self.reviewers(for: writer.tool, settings: context.settings)
         var review: ScriptReview
         var round = 0
         while true {
             let checks = ScriptCheck.run(beats, target: target, tolerance: style.tolerance, banned: banned, used: used)
-            review = try await Self.review(beats, checks: checks, title: video.title, reviewer: reviewer, round: round,
-                                           run: run, node: node, folder: folder, context: context)
+            // A reviewer that can't be reached (signed out, offline, its site blocked) hands over to the next one,
+            // and in the end to the writer itself, so one broken tool never stops the script.
+            while true {
+                do {
+                    review = try await Self.review(beats, checks: checks, title: video.title, reviewer: reviewers[0], round: round,
+                                                   run: run, node: node, folder: folder, context: context)
+                    break
+                } catch {
+                    guard reviewers.count > 1, !(error is CancellationError), !Task.isCancelled else { throw error }
+                    let failed = reviewers.removeFirst()
+                    context.onProgress("\(node.title): \(failed.displayName) could not review (\((error as? YTAError)?.message ?? "\(error)")). \(reviewers[0].displayName) reviews instead.")
+                }
+            }
             review.rounds = round
             guard !review.passed, round < Self.maxRevisions else { break }
             round += 1
@@ -391,9 +402,14 @@ public struct ScriptRecipe: NodeRecipe {
         return ScriptBeat.make(parts.map { (text: $0.0.trimmingCharacters(in: .whitespacesAndNewlines), purpose: $0.1) }, rate: rate)
     }
 
-    /// The reviewer is never the writer.
+    /// The reviewer is never the writer, unless no other tool is on.
     static func reviewer(for writer: EngineID, settings: AppSettings) -> EngineID {
-        [EngineID.claude, .codex, .opencode].first { $0 != writer && settings.engine($0).enabled } ?? writer
+        reviewers(for: writer, settings: settings)[0]
+    }
+
+    /// Reviewers to try in order: the other enabled tools, then the writer as a last resort.
+    static func reviewers(for writer: EngineID, settings: AppSettings) -> [EngineID] {
+        [EngineID.claude, .codex, .opencode].filter { $0 != writer && settings.engine($0).enabled } + [writer]
     }
 
     static func review(_ beats: [ScriptBeat], checks: ScriptCheck, title: String, reviewer: EngineID, round: Int,
